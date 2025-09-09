@@ -13,6 +13,7 @@
 
 #include "esp_netif.h"
 #include "esp_http_server.h" // <-- Add this
+#include "driver/gpio.h"
 // #include <event_groups.h>
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
@@ -23,7 +24,7 @@
 #define EXAMPLE_ESP_WIFI_SSID "RAVEN"
 #define EXAMPLE_ESP_WIFI_PASS "12345678"
 #define EXAMPLE_ESP_WIFI_CHANNEL 1
-#define EXAMPLE_MAX_STA_CONN 2
+#define EXAMPLE_MAX_STA_CONN 10
 
 static const char *TAG = "wifi softAP";
 
@@ -91,6 +92,31 @@ uint8_t nvs_memory_read(const char *key)
     }
     nvs_close(my_handle);
     return 0;
+}
+
+void nvs_memory_erase(const char *key)
+{
+    nvs_handle_t my_handle;
+    esp_err_t ret = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+    }
+    else
+    {
+        ESP_LOGI("NVS", "NVS handle opened successfully");
+    }
+    ret = nvs_erase_key(my_handle, key);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE("NVS", "Error (%s) erasing from NVS!", esp_err_to_name(ret));
+    }
+    ret = nvs_commit(my_handle);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE("NVS", "Error (%s) committing to NVS!", esp_err_to_name(ret));
+    }
+    nvs_close(my_handle);
 }
 
 // ================= HTTP SERVER HANDLERS =================
@@ -346,9 +372,13 @@ void wifi_init_softap(void)
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
 }
 
+
 void app_main(void)
 {
     uint8_t IS_CONFIGURED = 0;
+    uint8_t CONNECTED_MODE = 0;
+    uint8_t COUNT_CONFIG_BUTTON_PRESSED = 0;
+    uint8_t INDICATOR_STATE = 0;
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     // nvs_flash_erase();
@@ -378,6 +408,7 @@ void app_main(void)
         ESP_LOGI(TAG_STA, "SSID: %s, PASS: %s", sta_ssid, sta_pass);
         ESP_LOGI(TAG_STA, "ESP_WIFI_MODE_STA POSSIBLE");
         wifi_init_sta();
+        CONNECTED_MODE = 1;
     }
     else
     {
@@ -386,12 +417,57 @@ void app_main(void)
         start_webserver();
         ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     }
+    // GPIO config
+    gpio_config_t boot_en_pin_conf= {
+        .pin_bit_mask = (1ULL << GPIO_NUM_0), // Bit mask of the pins that you want to set,e.g.GPIO18/19
+        .intr_type = GPIO_INTR_DISABLE, //Interrupt type
+        .mode = GPIO_MODE_INPUT, //Set pin direction to output
+        .pull_down_en = GPIO_PULLDOWN_DISABLE, //Disable pull-down mode
+        .pull_up_en = GPIO_PULLUP_DISABLE, //Disable pull-up mode
+        .intr_type = GPIO_INTR_DISABLE, //Interrupt type
+    };
 
+    gpio_config_t status_io_conf = {
+        .pin_bit_mask = (1ULL << 40),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+
+    
+    gpio_config(&boot_en_pin_conf);
+    gpio_config(&status_io_conf);
+    
     ///////////////////////////////////////////////////////////////////////
     while (1)
     {
         // __NOP(); // <-  Prevent WDT Reset
-        vTaskDelay(1000 / portTICK_PERIOD_MS); // <- 1 Second
-        printf("Main Loop\n");
+        vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
+        
+        if (gpio_get_level(GPIO_NUM_0) == 0)
+        {
+            printf("Button Pressed\n");
+            COUNT_CONFIG_BUTTON_PRESSED++;
+
+            if(COUNT_CONFIG_BUTTON_PRESSED>=6){
+                nvs_memory_erase("SSID");
+                nvs_memory_erase("PASS");
+                esp_restart();
+            }
+            
+        }
+
+        if (CONNECTED_MODE){
+            printf("Connected Mode\n");
+        }
+        else
+        {
+            gpio_set_level(40, INDICATOR_STATE);
+            INDICATOR_STATE = !INDICATOR_STATE;
+            printf("AP Mode\n");
+          
+        }
+        
     }
 }
