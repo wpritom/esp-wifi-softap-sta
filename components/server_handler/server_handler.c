@@ -7,10 +7,49 @@
 esp_err_t hello_get_handler(httpd_req_t *req)
 {
 
-    const char *resp_str = "<h1>Hello from ESP32!</h1>";
-    httpd_resp_send(req, resp_str, strlen(resp_str));
+    // const char *resp_str = "<h1>Hello from ESP32!</h1>";
+    // httpd_resp_send(req, resp_str, strlen(resp_str));
+    // read memory 
+    char get_ssid[100];
+    char get_pass[100];
+
     nvs_memory_read("SSID");
+    strncpy((char *)get_ssid, read_nvs_buffer, sizeof(get_ssid));
+    
+
     nvs_memory_read("PASS");
+    strncpy((char *)get_pass, read_nvs_buffer, sizeof(get_pass));
+
+    ESP_LOGI("SERVER", "SSID: %s", get_ssid);
+    ESP_LOGI("SERVER", "PASS: %s", get_pass);
+    //
+    // Create a JSON object
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        ESP_LOGE("JSON", "Failed to create JSON object");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    // Add data
+    cJSON_AddStringToObject(root, "ssid", get_ssid);
+    cJSON_AddStringToObject(root, "pass", get_pass);
+   
+
+    // Convert JSON object to string
+    char *json_string = cJSON_Print(root);
+    if (!json_string) {
+        ESP_LOGE("JSON", "Failed to convert JSON object to string");
+        cJSON_Delete(root);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    // Set content type
+    httpd_resp_set_type(req, "application/json");
+
+    // Send the JSON string
+    httpd_resp_send(req, json_string, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 

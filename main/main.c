@@ -19,6 +19,8 @@
 #include "raven_wifi_config.h"
 #include "server_handler.h"
 
+#define INDICATOR_LED 40 //GPIO_NUM_6
+
 const char *CLIENT_TAG_STA = "wifi station";
 static const char *CLIENT_TAG = "wifi softAP";
 
@@ -88,14 +90,15 @@ void app_main(void)
     };
 
     gpio_config_t status_io_conf = {
-        .pin_bit_mask = (1ULL << 40),
+        .pin_bit_mask = (1ULL << INDICATOR_LED),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
 
-    
+    // gpio_reset_pin(GPIO_NUM_9);
+
     gpio_config(&boot_en_pin_conf);
     gpio_config(&status_io_conf);
     
@@ -132,7 +135,7 @@ void app_main(void)
             printf("AP Mode\n");
           
         }
-        gpio_set_level(40, INDICATOR_STATE);
+        gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
         
     }
 }

@@ -47,6 +47,8 @@ void event_handler_sta(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         WIFI_CONNECTED = 1;
+
+        
     }
 }
 

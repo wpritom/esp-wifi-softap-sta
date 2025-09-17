@@ -3,6 +3,7 @@
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "driver/gpio.h"
+// #include "mdns.h"
 
 #define EXAMPLE_ESP_WIFI_SSID "RAVEN"
 #define EXAMPLE_ESP_WIFI_PASS "12345678"
@@ -12,7 +13,7 @@
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
-#define EXAMPLE_ESP_MAXIMUM_RETRY 10
+#define EXAMPLE_ESP_MAXIMUM_RETRY 3
 
 extern char sta_ssid[32];
 extern char sta_pass[32];
