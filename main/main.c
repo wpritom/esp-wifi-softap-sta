@@ -24,9 +24,22 @@
 const char *CLIENT_TAG_STA = "wifi station";
 static const char *CLIENT_TAG = "wifi softAP";
 
+
+void erase_wifi_config(void){
+    nvs_memory_erase("SSID");
+    nvs_memory_erase("PASS");
+    nvs_memory_erase("CHECK");
+}
+
 uint8_t config_and_provisioning(void){
+      /*
+    CONFIGURED_STATE == 0/1 : not configured
+    CONFIGURED_STATE == 2 : first time checking
+    CONFIGURED_STATE == 3 : already configured
+    */
     uint8_t CONFIGURED_STATE = 0;
-    
+    uint8_t CONNECTED_MODE = 0;
+     
     // check memory for connection state
     if (nvs_memory_read("SSID"))
     {
@@ -39,11 +52,15 @@ uint8_t config_and_provisioning(void){
         CONFIGURED_STATE++;
     }
     
-
-    if (CONFIGURED_STATE == 2)
+    // connected once check then connected mode otherwise will trigger ap mode (nvs cleared)
+    
+    if (nvs_memory_read("CHECK")){
+        CONFIGURED_STATE++;
+    }
+  
+   
+    if (CONFIGURED_STATE == 2 || CONFIGURED_STATE ==3)// need to check tomorrow
     {
-        ESP_LOGI(CLIENT_TAG_STA, "SSID: %s, PASS: %s", sta_ssid, sta_pass);
-        ESP_LOGI(CLIENT_TAG_STA, "ESP_WIFI_MODE_STA POSSIBLE");
         wifi_init_sta();
     }
     else
@@ -54,13 +71,33 @@ uint8_t config_and_provisioning(void){
         ESP_LOGI(CLIENT_TAG, "ESP_WIFI_MODE_AP");
     }
 
-    return CONFIGURED_STATE;
+    // connection check and feedback
+    if (CONFIGURED_STATE == 2)
+    {
+        if(!WIFI_CONNECTED){
+            erase_wifi_config();
+            printf("FIRST TIME CONNECTION FAILED. Restarting...\n");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            esp_restart(); // return to bootloader
+        }
+        else{
+            nvs_memory_store("CHECK", "1");
+        }  
+
+       CONNECTED_MODE = 1;
+   }
+   else if (CONFIGURED_STATE == 3)
+   {
+       CONNECTED_MODE = 1;
+   }
+ 
+    return CONNECTED_MODE;
 }
+
 
 void app_main(void)
 {
     
-    uint8_t CONNECTED_MODE = 0;
     uint8_t COUNT_CONFIG_BUTTON_PRESSED = 0;
     uint8_t INDICATOR_STATE = 0;
     // Initialize NVS
@@ -73,11 +110,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-   uint8_t CONFIGURED_STATE = config_and_provisioning();
-   if (CONFIGURED_STATE == 2)
-   {
-       CONNECTED_MODE = 1;
-   }
+   uint8_t CONNECTED_MODE = config_and_provisioning();
     
     // GPIO config
     gpio_config_t boot_en_pin_conf= {
@@ -107,15 +140,14 @@ void app_main(void)
     {
         // __NOP(); // <-  Prevent WDT Reset
         vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
-        
+    
         if (gpio_get_level(GPIO_NUM_0) == 0)
         {
             printf("Button Pressed\n");
             COUNT_CONFIG_BUTTON_PRESSED++;
 
-            if(COUNT_CONFIG_BUTTON_PRESSED>=6){
-                nvs_memory_erase("SSID");
-                nvs_memory_erase("PASS");
+            if(COUNT_CONFIG_BUTTON_PRESSED>=5){
+                erase_wifi_config();
                 esp_restart();
             }
             
