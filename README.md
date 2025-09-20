@@ -1,4 +1,6 @@
-# _Sample project_
+# ESP WiFi Easy Provisioning
+In this project we upload Wi-Fi credentials when ESP32 is in SoftAP mode. After submit with `http` api request, ESP32 will connect to the network and restart itself.
+
 
 (See the README.md file in the upper level 'examples' directory for more information about examples.)
 

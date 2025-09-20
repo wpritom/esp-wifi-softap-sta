@@ -92,6 +92,13 @@ esp_err_t pass_post_handler(httpd_req_t *req)
 }
 
 
+esp_err_t http_get_restart_for_connect(httpd_req_t *req){
+    httpd_resp_send(req, "connect command received", HTTPD_RESP_USE_STRLEN);
+    printf(" --- connect command received. device will restart soon --- \n");
+    esp_restart();
+    return ESP_OK;
+
+}
 // ================= HTTP SERVER START =================
 httpd_handle_t start_webserver(void)
 {
@@ -107,6 +114,13 @@ httpd_handle_t start_webserver(void)
             .handler = hello_get_handler,
             .user_ctx = NULL};
         httpd_register_uri_handler(server, &hello_uri);
+
+        httpd_uri_t restart_for_connect_uri = {
+            .uri = "/connect",
+            .method = HTTP_GET,
+            .handler = http_get_restart_for_connect,
+            .user_ctx = NULL};
+        httpd_register_uri_handler(server, &restart_for_connect_uri);
 
         // Register POST handler
         httpd_uri_t data_uri = {
