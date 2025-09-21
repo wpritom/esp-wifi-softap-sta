@@ -31,6 +31,13 @@ void erase_wifi_config(void){
     nvs_memory_erase("CHECK");
 }
 
+
+void device_softap_mode_init(void){
+    // esp_wifi_stop();
+    wifi_set_ap();
+    start_webserver();
+}
+
 uint8_t config_and_provisioning(void){
       /*
     CONFIGURED_STATE == 0/1 : not configured
@@ -39,7 +46,7 @@ uint8_t config_and_provisioning(void){
     */
     uint8_t CONFIGURED_STATE = 0;
     uint8_t CONNECTED_MODE = 0;
-     
+    wifi_init_all();
     // check memory for connection state
     if (nvs_memory_read("SSID"))
     {
@@ -61,13 +68,16 @@ uint8_t config_and_provisioning(void){
    
     if (CONFIGURED_STATE == 2 || CONFIGURED_STATE ==3)// need to check tomorrow
     {
-        wifi_init_sta();
+        // wifi_init_sta();
+        stop_webserver();
+        wifi_set_sta(sta_ssid, sta_pass);
     }
     else
     {
         ESP_LOGI(CLIENT_TAG, "ESP_WIFI_MODE_STA IMPOSSIBLE");
-        wifi_init_softap();
-        start_webserver();
+        // wifi_init_softap();
+        // start_webserver();
+        device_softap_mode_init();
         ESP_LOGI(CLIENT_TAG, "ESP_WIFI_MODE_AP");
     }
 
@@ -76,9 +86,10 @@ uint8_t config_and_provisioning(void){
     {
         if(!WIFI_CONNECTED){
             erase_wifi_config();
-            printf("FIRST TIME CONNECTION FAILED. Restarting...\n");
+            printf("FIRST TIME CONNECTION FAILED. Switching Mode...\n");
             vTaskDelay(1000 / portTICK_PERIOD_MS);
-            esp_restart(); // return to bootloader
+            // esp_restart(); // return to bootloader
+            device_softap_mode_init();
         }
         else{
             nvs_memory_store("CHECK", "1");
@@ -97,7 +108,7 @@ uint8_t config_and_provisioning(void){
 
 void app_main(void)
 {
-    
+    esp_reset_reason();
     uint8_t COUNT_CONFIG_BUTTON_PRESSED = 0;
     uint8_t INDICATOR_STATE = 0;
     // Initialize NVS
@@ -148,7 +159,11 @@ void app_main(void)
 
             if(COUNT_CONFIG_BUTTON_PRESSED>=5){
                 erase_wifi_config();
-                esp_restart();
+                COUNT_CONFIG_BUTTON_PRESSED = 0;
+                printf(" --- Device Peer Mode Activation command received --- \n");
+                // esp_restart();
+                device_softap_mode_init();
+                
             }
             
         }
@@ -166,6 +181,12 @@ void app_main(void)
             INDICATOR_STATE = !INDICATOR_STATE;
             printf("AP Mode\n");
           
+        }
+
+        if(http_read_connect_command_and_reset()){
+            printf(" --- Device Connection Command Received --- \n");
+            stop_webserver();
+            wifi_set_sta(sta_ssid, sta_pass);
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
         

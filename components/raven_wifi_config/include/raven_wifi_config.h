@@ -27,3 +27,8 @@ void wifi_init_sta(void);
 void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data);
 void wifi_init_softap(void);
+
+// new api
+void wifi_init_all(void);
+void wifi_set_ap(void);
+void wifi_set_sta(const char *ssid, const char *pass);

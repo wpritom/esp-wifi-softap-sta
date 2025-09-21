@@ -3,6 +3,22 @@
 #include "esp_log.h"
 #include "raven_nvs_handler.h"
 
+uint8_t HTTP_CONNECT_COMMAND_FLAG = 0;
+httpd_handle_t server = NULL;
+uint8_t http_read_connect_command_and_reset(void)
+{
+
+    if (HTTP_CONNECT_COMMAND_FLAG == 1)
+    {
+        HTTP_CONNECT_COMMAND_FLAG = 0;
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 // ================= HTTP REQUEST HANDLERS =================
 esp_err_t hello_get_handler(httpd_req_t *req)
 {
@@ -95,14 +111,15 @@ esp_err_t pass_post_handler(httpd_req_t *req)
 esp_err_t http_get_restart_for_connect(httpd_req_t *req){
     httpd_resp_send(req, "connect command received", HTTPD_RESP_USE_STRLEN);
     printf(" --- connect command received. device will restart soon --- \n");
-    esp_restart();
+    HTTP_CONNECT_COMMAND_FLAG = 1;
+    // esp_restart();
     return ESP_OK;
 
 }
 // ================= HTTP SERVER START =================
 httpd_handle_t start_webserver(void)
 {
-    httpd_handle_t server = NULL;
+    
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
     if (httpd_start(&server, &config) == ESP_OK)
@@ -140,3 +157,12 @@ httpd_handle_t start_webserver(void)
     return server;
 }
 
+void stop_webserver(void)
+{
+    if (server != NULL) {
+        // Stop the httpd server
+        httpd_stop(server);
+        // After stopping, the handle is no longer valid for further use
+        server = NULL; // It's good practice to set it back to NULL
+    }
+}
