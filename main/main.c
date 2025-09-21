@@ -21,10 +21,6 @@
 
 #define INDICATOR_LED 40 //GPIO_NUM_6
 
-const char *CLIENT_TAG_STA = "wifi station";
-static const char *CLIENT_TAG = "wifi softAP";
-
-
 uint8_t RAVEN_AP_MODE = 0;
 uint8_t RAVEN_STA_MODE = 1;
 
@@ -32,25 +28,43 @@ void erase_wifi_config(void){
     nvs_memory_erase("SSID");
     nvs_memory_erase("PASS");
     nvs_memory_erase("CHECK");
+    sta_ssid[0] = '\0';
+    sta_pass[0] = '\0';
 }
 
 
 void device_softap_mode_init(void){
-    // esp_wifi_stop();
     wifi_set_ap();
     start_webserver();
 }
 
-uint8_t config_and_provisioning(void){
+void device_station_mode_init(void){
+    stop_webserver();
+    wifi_set_sta();
+}
+
+
+uint8_t device_wifi_provision(void){
       /*
     CONFIGURED_STATE == 0/1 : not configured
     CONFIGURED_STATE == 2 : first time checking
     CONFIGURED_STATE == 3 : already configured
+
+    returns 
+    CONNECTED_MODE = 0 = AP Mode
+    CONNECTED_MODE = 1 = STA Mode
+    CONNECTED_MODE = 3 = ELSE
     */
+
     uint8_t CONFIGURED_STATE = 0;
     uint8_t CONNECTED_MODE = 0;
-    wifi_init_all();
-    // check memory for connection state
+    
+    if(!WIFI_GLOBAL_INIT){
+        wifi_init_all();
+    }
+    
+
+    // check wifi configuration data in nvs
     if (nvs_memory_read("SSID"))
     {
         strcpy(sta_ssid, read_nvs_buffer);
@@ -61,50 +75,41 @@ uint8_t config_and_provisioning(void){
         strcpy(sta_pass, read_nvs_buffer);
         CONFIGURED_STATE++;
     }
-    
-    // connected once check then connected mode otherwise will trigger ap mode (nvs cleared)
-    
-    if (nvs_memory_read("CHECK")){
-        CONFIGURED_STATE++;
-    }
-  
-   
-    if (CONFIGURED_STATE == 2 || CONFIGURED_STATE ==3)// need to check tomorrow
-    {
-        // wifi_init_sta();
-        stop_webserver();
-        wifi_set_sta(sta_ssid, sta_pass);
-    }
-    else
-    {
-        ESP_LOGI(CLIENT_TAG, "ESP_WIFI_MODE_STA IMPOSSIBLE");
-        // wifi_init_softap();
-        // start_webserver();
-        device_softap_mode_init();
-        ESP_LOGI(CLIENT_TAG, "ESP_WIFI_MODE_AP");
-    }
 
-    // connection check and feedback
-    if (CONFIGURED_STATE == 2)
-    {
-        if(!WIFI_CONNECTED){
-            erase_wifi_config();
-            printf("FIRST TIME CONNECTION FAILED. Switching Mode...\n");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            // esp_restart(); // return to bootloader
-            device_softap_mode_init();
+    if(CONFIGURED_STATE==2){
+        printf("--- Configured state %d\n", CONFIGURED_STATE);
+        // first time peer attempt (peering)
+        if(!nvs_memory_read("CHECK")){
+            printf("--- peering attempt...");
+            device_station_mode_init();
+            
+            if(!WIFI_CONNECTED){
+                printf("--- initial peering attempt failed!");
+                erase_wifi_config();
+                CONNECTED_MODE = RAVEN_AP_MODE;
+                device_softap_mode_init();
+                
+            }
+            // after successful peering
+            else{
+                CONNECTED_MODE = RAVEN_STA_MODE;
+                nvs_memory_store("CHECK","1");
+
+            } 
         }
+        // device already connected once
         else{
-            nvs_memory_store("CHECK", "1");
-        }  
+            device_station_mode_init();
+            CONNECTED_MODE = RAVEN_STA_MODE;
+        }
+    }
 
-       CONNECTED_MODE = 1;
-   }
-   else if (CONFIGURED_STATE == 3)
-   {
-       CONNECTED_MODE = 1;
-   }
- 
+    else{
+        // no saved peering data
+        device_softap_mode_init();
+        CONNECTED_MODE=RAVEN_AP_MODE;;
+    }
+
     return CONNECTED_MODE;
 }
 
@@ -124,7 +129,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-   uint8_t CONNECTED_MODE = config_and_provisioning();
+    uint8_t CONNECTED_MODE = device_wifi_provision();
     
     // GPIO config
     gpio_config_t boot_en_pin_conf= {
@@ -150,64 +155,37 @@ void app_main(void)
     gpio_config(&status_io_conf);
     
     ///////////////////////////////////////////////////////////////////////
-    // while (1)
-    // {
-    //     // __NOP(); // <-  Prevent WDT Reset
-    //     vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
-    //     printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, WIFI_CONNECTED );
-    // }
-
-
-
-        while (1)
+    while (1)
     {
         // __NOP(); // <-  Prevent WDT Reset
         vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
-    
+        printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, WIFI_CONNECTED );
+
+        if(CONNECTED_MODE==RAVEN_STA_MODE && WIFI_CONNECTED){
+            INDICATOR_STATE=1;
+        }
+        else if(CONNECTED_MODE==RAVEN_AP_MODE && !WIFI_CONNECTED){
+            INDICATOR_STATE=!INDICATOR_STATE;
+        }
+       
+        if(http_read_connect_command_and_reset()){
+            printf(" --- Device Connection Command Received --- \n");
+            CONNECTED_MODE = device_wifi_provision();
+        }
+
         if (gpio_get_level(GPIO_NUM_0) == 0)
         {
             printf("Button Pressed\n");
             COUNT_CONFIG_BUTTON_PRESSED++;
 
             if(COUNT_CONFIG_BUTTON_PRESSED>=5){
+                // esp_wifi_disconnect()
                 erase_wifi_config();
-                COUNT_CONFIG_BUTTON_PRESSED = 0;
-                printf(" --- Device Peer Mode Activation command received --- \n");
-                // esp_restart();
-                device_softap_mode_init();
-                
+                COUNT_CONFIG_BUTTON_PRESSED=0;
+                CONNECTED_MODE = device_wifi_provision();
             }
-            
-        }
-
-        if (CONNECTED_MODE & WIFI_CONNECTED){
-            printf("Connected Mode\n");
-            INDICATOR_STATE = 1;
-        }
-        else if (CONNECTED_MODE & !WIFI_CONNECTED){
-            printf("Disconnected Mode\n");
-            INDICATOR_STATE = 0;
-        }
-        else
-        {
-            INDICATOR_STATE = !INDICATOR_STATE;
-            printf("AP Mode\n");
-          
-        }
-
-        if(http_read_connect_command_and_reset()){
-            printf(" --- Device Connection Command Received --- \n");
-            stop_webserver();
-            wifi_set_sta(sta_ssid, sta_pass);
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
-        
     }
-
-    
 }
 
-
-
-
-    ///////////////////////////////////////////////////////////////////////

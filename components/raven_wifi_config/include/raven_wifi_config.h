@@ -18,6 +18,7 @@
 extern char sta_ssid[32];
 extern char sta_pass[32];
 extern uint8_t WIFI_CONNECTED;
+extern uint8_t WIFI_GLOBAL_INIT;
 
 void event_handler_sta(void *arg, esp_event_base_t event_base,
                               int32_t event_id, void *event_data);
@@ -31,4 +32,4 @@ void wifi_init_softap(void);
 // new api
 void wifi_init_all(void);
 void wifi_set_ap(void);
-void wifi_set_sta(const char *ssid, const char *pass);
+void wifi_set_sta();

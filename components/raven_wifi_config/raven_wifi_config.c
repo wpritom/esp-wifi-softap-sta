@@ -14,7 +14,7 @@ char sta_pass[32];
 const char *TAG_STA = "wifi station";
 static const char *TAG = "wifi softAP";
 uint8_t WIFI_CONNECTED = 0;
-
+uint8_t WIFI_GLOBAL_INIT = 0;
 /* FreeRTOS event group to signal when we are connected*/
 EventGroupHandle_t s_wifi_event_group;
 
@@ -215,10 +215,11 @@ void wifi_init_all(void)
                                                         NULL));
 
     // ESP_ERROR_CHECK(esp_wifi_start());
+    WIFI_GLOBAL_INIT=1;
 }
 
 
-void wifi_set_sta(const char *ssid, const char *pass)
+void wifi_set_sta()
 {
     // ESP_ERROR_CHECK(esp_wifi_stop());
     // s_wifi_event_group = xEventGroupCreate();
@@ -230,8 +231,8 @@ void wifi_set_sta(const char *ssid, const char *pass)
         },
     };
 
-    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char *)wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));
+    strncpy((char *)wifi_config.sta.ssid, sta_ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, sta_pass, sizeof(wifi_config.sta.password));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
