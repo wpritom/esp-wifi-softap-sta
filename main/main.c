@@ -25,6 +25,9 @@ const char *CLIENT_TAG_STA = "wifi station";
 static const char *CLIENT_TAG = "wifi softAP";
 
 
+uint8_t RAVEN_AP_MODE = 0;
+uint8_t RAVEN_STA_MODE = 1;
+
 void erase_wifi_config(void){
     nvs_memory_erase("SSID");
     nvs_memory_erase("PASS");
@@ -147,7 +150,16 @@ void app_main(void)
     gpio_config(&status_io_conf);
     
     ///////////////////////////////////////////////////////////////////////
-    while (1)
+    // while (1)
+    // {
+    //     // __NOP(); // <-  Prevent WDT Reset
+    //     vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
+    //     printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, WIFI_CONNECTED );
+    // }
+
+
+
+        while (1)
     {
         // __NOP(); // <-  Prevent WDT Reset
         vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
@@ -191,4 +203,11 @@ void app_main(void)
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
         
     }
+
+    
 }
+
+
+
+
+    ///////////////////////////////////////////////////////////////////////

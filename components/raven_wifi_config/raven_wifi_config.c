@@ -220,7 +220,7 @@ void wifi_init_all(void)
 
 void wifi_set_sta(const char *ssid, const char *pass)
 {
-    ESP_ERROR_CHECK(esp_wifi_stop());
+    // ESP_ERROR_CHECK(esp_wifi_stop());
     // s_wifi_event_group = xEventGroupCreate();
 
     wifi_config_t wifi_config = {
@@ -256,12 +256,12 @@ void wifi_set_sta(const char *ssid, const char *pass)
     if (bits & WIFI_CONNECTED_BIT)
     {
         ESP_LOGI(TAG_STA, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 sta_ssid, sta_pass);
     }
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG_STA, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 sta_ssid, sta_pass);
     }
     else
     {
@@ -272,6 +272,7 @@ void wifi_set_sta(const char *ssid, const char *pass)
 
 void wifi_set_ap(void)
 {
+    
     ESP_ERROR_CHECK(esp_wifi_stop());
   
     wifi_config_t wifi_config = {
