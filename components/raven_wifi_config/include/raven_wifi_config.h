@@ -5,7 +5,7 @@
 #include "driver/gpio.h"
 // #include "mdns.h"
 
-#define EXAMPLE_ESP_WIFI_SSID "RAVEN"
+#define EXAMPLE_ESP_WIFI_SSID "RAVENIOT"
 #define EXAMPLE_ESP_WIFI_PASS "12345678"
 #define EXAMPLE_ESP_WIFI_CHANNEL 1
 #define EXAMPLE_MAX_STA_CONN 10
@@ -17,8 +17,10 @@
 
 extern char sta_ssid[32];
 extern char sta_pass[32];
+extern char device_mac_str[18];
 extern uint8_t WIFI_CONNECTED;
 extern uint8_t WIFI_GLOBAL_INIT;
+
 
 void event_handler_sta(void *arg, esp_event_base_t event_base,
                               int32_t event_id, void *event_data);

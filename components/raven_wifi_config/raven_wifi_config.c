@@ -10,6 +10,7 @@ int s_retry_num = 0;
 
 char sta_ssid[32];
 char sta_pass[32];
+char device_mac_str[18];
 
 const char *TAG_STA = "wifi station";
 static const char *TAG = "wifi softAP";
@@ -17,6 +18,14 @@ uint8_t WIFI_CONNECTED = 0;
 uint8_t WIFI_GLOBAL_INIT = 0;
 /* FreeRTOS event group to signal when we are connected*/
 EventGroupHandle_t s_wifi_event_group;
+
+void device_mac_str_init(void)
+{
+    uint8_t mac_addr[6];
+    esp_read_mac(mac_addr, ESP_MAC_WIFI_STA);
+    sprintf(device_mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+
+}
 
 void event_handler_sta(void *arg, esp_event_base_t event_base,
                               int32_t event_id, void *event_data)
@@ -75,6 +84,7 @@ void wifi_event_handler(void *arg, esp_event_base_t event_base,
 // ================= New WiFi Mode Switching API ================= ////////////////////////////////////////
 void wifi_init_all(void)
 {
+    device_mac_str_init();
     // Init once
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
