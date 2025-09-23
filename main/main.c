@@ -99,9 +99,9 @@ void app_main(void)
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
-        // if (WIFI_CONNECTED){
-        //     api_get_remote_status();
-        // }
+        if (WIFI_CONNECTED){
+            api_get_remote_status();
+        }
     }
 }
 

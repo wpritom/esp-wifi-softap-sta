@@ -9,12 +9,14 @@
 static char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
 void api_get_remote_status(void){
+    memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
     printf(" --- api_get_remote_status\n");
 
     esp_http_client_config_t config = {
-        .url = "https://viber-bot-fastapi.vercel.app/walbot/",
+        .url = "https://api.restful-api.dev/objects",
         // experimental (no verification | not secure)
         .crt_bundle_attach = esp_crt_bundle_attach,   // use built-in CA certs,
+         
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -25,7 +27,13 @@ void api_get_remote_status(void){
         int content_len = esp_http_client_get_content_length(client);
         int read_len = esp_http_client_read_response(client, local_response_buffer, MAX_HTTP_OUTPUT_BUFFER);
         int status_code = esp_http_client_get_status_code(client);
-        
+
+        if (read_len >= 0)
+        {
+            local_response_buffer[read_len] = 0; // null terminate
+            printf("[%d] Response: %s\n", status_code, local_response_buffer);
+        }
+
         printf("Content length: %d Read Length: %d\n", content_len, read_len);
         printf("[%d] Response: %s\n", status_code, local_response_buffer);
     }
