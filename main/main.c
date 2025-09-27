@@ -64,7 +64,7 @@ void app_main(void)
 
     gpio_config(&boot_en_pin_conf);
     gpio_config(&status_io_conf);
-    
+    int RETRY_CTD = 10;
     ///////////////////////////////////////////////////////////////////////
     while (1)
     {
@@ -99,8 +99,18 @@ void app_main(void)
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
-        if (WIFI_CONNECTED){
-            api_get_remote_status();
+        // if (WIFI_CONNECTED){
+        //     api_get_remote_status();
+        // }
+        if(CONNECTED_MODE==RAVEN_STA_MODE &&!WIFI_CONNECTED){
+            if(RETRY_CTD==0){
+                RETRY_CTD=10;
+                CONNECTED_MODE = device_wifi_provision();
+            }
+            else{
+                RETRY_CTD--;
+            }
+            printf("WIFI DISCONNECTED | RETRY CTD %d\n", RETRY_CTD);
         }
     }
 }
