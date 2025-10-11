@@ -94,7 +94,7 @@ void api_get_remote_status(void){
     printf(" --- api_get_remote_status\n");
 
     esp_http_client_config_t config = {
-        .url = "https://viber-bot-fastapi.vercel.app/walbot/",
+        .url = "https://api.goloklab.com/status/",
         .event_handler = _http_event_handler, // <-- ADD THE HANDLER HERE
         .crt_bundle_attach = esp_crt_bundle_attach,
     };

@@ -180,7 +180,7 @@ void wifi_set_sta()
 
 void wifi_set_ap(void)
 {
-    
+    s_retry_num = 0;
     ESP_ERROR_CHECK(esp_wifi_stop());
   
     wifi_config_t wifi_config = {
