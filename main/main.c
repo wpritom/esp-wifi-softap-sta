@@ -105,9 +105,14 @@ void app_main(void)
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
         if (is_wifi_sta_connected()){
-            api_get_remote_status();
+            // api_get_remote_status();
+            // api_post_device_data("68e53afce179841882782a8b",
+            //                      "string",
+            //                      "68e350d6284f49dd01c20a46",
+            //                      1,
+            //                      100);
         }
-        
+
         if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){
             if(RETRY_CTD==0){
                 RETRY_CTD=10;
