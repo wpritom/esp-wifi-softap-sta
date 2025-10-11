@@ -63,7 +63,7 @@ uint8_t device_wifi_provision(void){
             printf("--- peering attempt...");
             device_station_mode_init();
             
-            if(!WIFI_CONNECTED){
+            if(!is_wifi_sta_connected()){
                 printf("--- initial peering attempt failed!");
                 erase_wifi_config();
                 CONNECTED_MODE = RAVEN_AP_MODE;

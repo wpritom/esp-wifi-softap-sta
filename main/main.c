@@ -40,7 +40,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    uint8_t CONNECTED_MODE = device_wifi_provision();
+    
     
     // GPIO config
     gpio_config_t boot_en_pin_conf= {
@@ -66,21 +66,26 @@ void app_main(void)
     gpio_config(&status_io_conf);
     int RETRY_CTD = 10;
     ///////////////////////////////////////////////////////////////////////
+
+
+    uint8_t CONNECTED_MODE = device_wifi_provision();
+
+
+    ////////////////////////////////////////////////////////////////////////
     while (1)
     {
         // __NOP(); // <-  Prevent WDT Reset
         vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
-        printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, WIFI_CONNECTED );
-        
+        printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, is_wifi_sta_connected());
 
-        if(CONNECTED_MODE==RAVEN_STA_MODE && WIFI_CONNECTED){
+        if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
             INDICATOR_STATE=1;
         }
-        else if(CONNECTED_MODE==RAVEN_AP_MODE && !WIFI_CONNECTED){
+        else if(CONNECTED_MODE==RAVEN_AP_MODE && !is_wifi_sta_connected()){
             INDICATOR_STATE=!INDICATOR_STATE;
         }
        
-        if(http_read_connect_command_and_reset()){
+        if(!is_wifi_sta_connected() && http_read_connect_command_and_reset()){
             printf(" --- Device Connection Command Received --- \n");
             CONNECTED_MODE = device_wifi_provision();
         }
@@ -99,19 +104,25 @@ void app_main(void)
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
-        // if (WIFI_CONNECTED){
-        //     api_get_remote_status();
-        // }
-        if(CONNECTED_MODE==RAVEN_STA_MODE &&!WIFI_CONNECTED){
+        if (is_wifi_sta_connected()){
+            api_get_remote_status();
+        }
+        
+        if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){
             if(RETRY_CTD==0){
                 RETRY_CTD=10;
-                CONNECTED_MODE = device_wifi_provision();
+                check_and_retry_wifi(1);
             }
             else{
                 RETRY_CTD--;
             }
             printf("WIFI DISCONNECTED | RETRY CTD %d\n", RETRY_CTD);
         }
+
+        // if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){
+        //     printf(" --- WIFI DISCONNECTED | Retrying --- \n");
+        //     CONNECTED_MODE = device_wifi_provision();
+        // }
     }
 }
 

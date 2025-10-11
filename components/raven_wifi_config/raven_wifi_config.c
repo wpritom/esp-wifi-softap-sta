@@ -1,8 +1,10 @@
 #include "raven_wifi_config.h"
+#include "esp_wifi_types.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include <stdint.h>
 #include <string.h>
 
 
@@ -14,7 +16,7 @@ char device_mac_str[18];
 
 const char *TAG_STA = "wifi station";
 static const char *TAG = "wifi softAP";
-uint8_t WIFI_CONNECTED = 0;
+// uint8_t WIFI_CONNECTED = 0;
 uint8_t WIFI_GLOBAL_INIT = 0;
 /* FreeRTOS event group to signal when we are connected*/
 EventGroupHandle_t s_wifi_event_group;
@@ -46,8 +48,8 @@ void event_handler_sta(void *arg, esp_event_base_t event_base,
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
-        ESP_LOGI(TAG, "connect to the AP fail");
-        WIFI_CONNECTED = 0;
+        ESP_LOGI(TAG_STA, "connect to the AP fail");
+        // WIFI_CONNECTED = 0;
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -55,7 +57,7 @@ void event_handler_sta(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG_STA, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-        WIFI_CONNECTED = 1;
+        // WIFI_CONNECTED = 1;
 
         
     }
@@ -126,8 +128,7 @@ void wifi_init_all(void)
 void wifi_set_sta()
 {
     // ESP_ERROR_CHECK(esp_wifi_stop());
-    // s_wifi_event_group = xEventGroupCreate();
-
+    // s_wifi_event_group = xEventGroupCreate();        
     wifi_config_t wifi_config = {
         .sta = {
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
@@ -163,8 +164,8 @@ void wifi_set_sta()
         ESP_LOGI(TAG_STA, "connected to ap SSID:%s password:%s",
                  sta_ssid, sta_pass);
 
-        printf(" >>>> WIFI_CONNECTED Bits : %ld  WIFI CONNECTED : %d\n", bits, WIFI_CONNECTED);
-        WIFI_CONNECTED = 1; // override (to mitigate the delay of the event handler)
+        printf(" >>>> WIFI_CONNECTED Bits : %ld  //WIFI CONNECTED : //d\n", bits);
+        // WIFI_CONNECTED = 1; // override (to mitigate the delay of the event handler)
     }
     else if (bits & WIFI_FAIL_BIT)
     {
@@ -180,7 +181,7 @@ void wifi_set_sta()
 
 void wifi_set_ap(void)
 {
-    s_retry_num = 0;
+    // s_retry_num = 0;
     ESP_ERROR_CHECK(esp_wifi_stop());
   
     wifi_config_t wifi_config = {
@@ -205,4 +206,31 @@ void wifi_set_ap(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_LOGI(TAG, "Switching to AP mode...");
+}
+
+
+uint8_t is_wifi_sta_connected(void) {
+    wifi_ap_record_t ap_info;
+    int status = esp_wifi_sta_get_ap_info(&ap_info);
+    // printf(" --- is_wifi_sta_connected status %d --- \n", status);
+    return (status == ESP_OK) ? 1 : 0;
+}
+
+
+void check_and_retry_wifi(uint8_t retry) {
+    /*
+    use this if connection mode STA is set
+    */
+
+    while (retry > 0)
+    {
+        if(is_wifi_sta_connected()) {
+        // already connected
+        return;
+    } else {
+        // not connected, try to reconnect
+        esp_wifi_connect();
+        retry--;
+    }
+}
 }
