@@ -11,6 +11,9 @@
 extern uint8_t RAVEN_AP_MODE;
 extern uint8_t RAVEN_STA_MODE;
 
+extern uint8_t connected_mode;
+extern uint8_t wifi_mode;
+
 void erase_wifi_config(void);
 void device_softap_mode_init(void);
 void device_station_mode_init(void);

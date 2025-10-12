@@ -75,7 +75,8 @@ void app_main(void)
     while (1)
     {
         // __NOP(); // <-  Prevent WDT Reset
-        vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
+        printf("%s\n", device_mac_str);
+        vTaskDelay(100 / portTICK_PERIOD_MS); // <- 1 Second
         printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, is_wifi_sta_connected());
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
@@ -106,11 +107,11 @@ void app_main(void)
 
         if (is_wifi_sta_connected()){
             // api_get_remote_status();
-            // api_post_device_data("68e53afce179841882782a8b",
-            //                      "string",
-            //                      "68e350d6284f49dd01c20a46",
-            //                      1,
-            //                      100);
+            api_post_device_data(device_mac_str,
+                                 DEVICE_SECRET,
+                                 "68e350d6284f49dd01c20a46",
+                                 1,
+                                 100);
         }
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){

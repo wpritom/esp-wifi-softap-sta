@@ -73,6 +73,13 @@ void api_post_device_data(const char *device_id,
                           int dpid,
                           int value)
 {
+
+
+    if (!device_id || !device_secret || !uuid) {
+        ESP_LOGE("API", "Invalid arguments");
+        return;
+    }
+
     // Reset buffer before new request
     memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
     buffer_idx = 0;
@@ -81,37 +88,81 @@ void api_post_device_data(const char *device_id,
 
     // Build JSON string
     char post_data[256];
-    snprintf(post_data, sizeof(post_data),
+    int len = snprintf(post_data, sizeof(post_data),
              "{\"device_id\":\"%s\",\"device_secret\":\"%s\",\"uuid\":\"%s\",\"dpid\":%d,\"value\":%d}",
              device_id, device_secret, uuid, dpid, value);
+
+
+    if (len < 0 || len >= sizeof(post_data)) {
+        ESP_LOGE("API", "JSON payload too large");
+        return;
+    }
+
 
     // HTTP client config
     esp_http_client_config_t config = {
         .url = "https://api.goloklab.com/iot/device/report",  // <-- Replace with your real endpoint
         .event_handler = _http_event_handler,
         .crt_bundle_attach = esp_crt_bundle_attach,
+        .timeout_ms=5000,
+        .is_async=1,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
-    // Set request type and headers
-    esp_http_client_set_method(client, HTTP_METHOD_POST);
-    esp_http_client_set_header(client, "Content-Type", "application/json");
+    if (client == NULL) {
+        ESP_LOGE("API", "Failed to init HTTP client");
+        return;
+    }
 
-    // Attach the JSON body
+
+
+    // Set request type and headers
+    esp_err_t err = esp_http_client_set_method(client, HTTP_METHOD_POST);
+
+    if (err != ESP_OK) {
+        ESP_LOGE("API", "Failed to set method: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        return;
+    }
+
+    // set header and Attach the JSON body
+    esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_http_client_set_post_field(client, post_data, strlen(post_data));
 
     // Perform the request
-    esp_err_t err = esp_http_client_perform(client);
+    // err = esp_http_client_perform(client);
+
+    // if (err == ESP_OK) {
+    //     int status_code = esp_http_client_get_status_code(client);
+    //     ESP_LOGI("API", "POST success, status = %d", status_code);
+    //     ESP_LOGI("API", "Response: %s", local_response_buffer);
+    // } else {
+    //     ESP_LOGE("API", "POST request failed: %s", esp_err_to_name(err));
+    // }
+
+    // Non-blocking perform
+    // esp_err_t err;
+    // asynchronous perform
+    do {
+        err = esp_http_client_perform(client);
+        if (err == ESP_ERR_HTTP_EAGAIN) {
+            // HTTP still in progress — let other tasks run
+            // vTaskDelay(pdMS_TO_TICKS(10));
+            printf("HTTP still in progress\n");
+        }
+    } while (err == ESP_ERR_HTTP_EAGAIN);
 
     if (err == ESP_OK) {
-        int status_code = esp_http_client_get_status_code(client);
-        ESP_LOGI("API", "POST success, status = %d", status_code);
-        ESP_LOGI("API", "Response: %s", local_response_buffer);
+        ESP_LOGI("API", "POST complete");
+        return;
     } else {
-        ESP_LOGE("API", "POST request failed: %s", esp_err_to_name(err));
+        ESP_LOGE("API", "POST failed: %s", esp_err_to_name(err));
     }
+
+    esp_http_client_cleanup(client);
 
     // Cleanup
     esp_http_client_cleanup(client);
+    
 }

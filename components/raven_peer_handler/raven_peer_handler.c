@@ -4,6 +4,10 @@
 uint8_t RAVEN_AP_MODE = 0;
 uint8_t RAVEN_STA_MODE = 1;
 
+uint8_t connected_mode = 0;
+uint8_t wifi_mode = 0;
+
+
 void erase_wifi_config(void){
     nvs_memory_erase("SSID");
     nvs_memory_erase("PASS");
