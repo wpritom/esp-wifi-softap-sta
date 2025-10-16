@@ -163,6 +163,6 @@ void api_post_device_data(const char *device_id,
     esp_http_client_cleanup(client);
 
     // Cleanup
-    esp_http_client_cleanup(client);
+    // esp_http_client_cleanup(client);
     
 }
