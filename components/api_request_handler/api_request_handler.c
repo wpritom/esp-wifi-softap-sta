@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "esp_crt_bundle.h"
+#include "esp_http_client.h"
 #include "esp_log.h"
 #include "api_request_handler.h"
 
@@ -165,4 +166,79 @@ void api_post_device_data(const char *device_id,
     // Cleanup
     // esp_http_client_cleanup(client);
     
+}
+
+
+void api_post_device_pairing(const char *device_id,
+                             const char *device_pid,
+                             const char *device_secret)
+{
+    if (!device_id || !device_secret || !device_pid) {
+        ESP_LOGE("API", "Invalid arguments");
+        return;
+    }
+
+    // Reset buffer before new request
+    memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
+    buffer_idx = 0;
+
+    ESP_LOGI("API", "Posting device pairing...");
+
+    char get_url[256];
+
+    int len = snprintf(get_url, sizeof(get_url),
+                       "https://api.goloklab.com/iot/device/pair/?device_id=%s&device_pid=%s&device_secret=%s",
+                       device_id, device_pid, device_secret);
+
+    // HTTP client config
+    esp_http_client_config_t config = {
+        .url = get_url,  // <-- Replace with your real endpoint
+        .event_handler = _http_event_handler,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .timeout_ms=5000,
+        .is_async=1,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+
+    if (client == NULL) {
+        ESP_LOGE("API", "Failed to init HTTP client");
+        return;
+    }
+
+     // Set request type and headers
+    esp_err_t err = esp_http_client_set_method(client, HTTP_METHOD_GET);
+
+    if (err != ESP_OK) {
+        ESP_LOGE("API", "Failed to set method: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        return;
+    }
+
+
+
+    // Non-blocking perform
+    // esp_err_t err;
+    // asynchronous perform
+    do {
+        err = esp_http_client_perform(client);
+        if (err == ESP_ERR_HTTP_EAGAIN) {
+            // HTTP still in progress — let other tasks run
+            // vTaskDelay(pdMS_TO_TICKS(10));
+            printf("HTTP still in progress\n");
+        }
+    } while (err == ESP_ERR_HTTP_EAGAIN);
+
+    if (err == ESP_OK) {
+        ESP_LOGI("API", "Device pairing response");
+        int status_code = esp_http_client_get_status_code(client);
+        printf("[%d] Response: %s\n", status_code, local_response_buffer);
+        return;
+    } else {
+        ESP_LOGE("API", "POST failed: %s", esp_err_to_name(err));
+    }
+
+    esp_http_client_cleanup(client);
+
 }

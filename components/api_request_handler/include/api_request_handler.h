@@ -7,4 +7,8 @@ void api_post_device_data(const char *device_id,
                           const char *uuid,
                           int dpid,
                           int value);
+
+void api_post_device_pairing(const char *device_id,
+                             const char *device_pid,
+                             const char *device_secret);
                           
