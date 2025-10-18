@@ -127,7 +127,12 @@ void wifi_init_all(void)
 
 
 void wifi_set_sta()
-{
+{   
+    // reseting retry count
+    if(s_retry_num==EXAMPLE_ESP_MAXIMUM_RETRY){
+        s_retry_num = 0;
+    } 
+    
     // ESP_ERROR_CHECK(esp_wifi_stop());
     // s_wifi_event_group = xEventGroupCreate();        
     wifi_config_t wifi_config = {
