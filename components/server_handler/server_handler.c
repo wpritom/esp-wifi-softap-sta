@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "raven_nvs_handler.h"
 #include "raven_wifi_config.h"
+#include "raven_peer_handler.h"
 
 uint8_t HTTP_CONNECT_COMMAND_FLAG = 0;
 httpd_handle_t server = NULL;
@@ -40,6 +41,7 @@ esp_err_t hello_get_handler(httpd_req_t *req)
     ESP_LOGI("SERVER", "SSID: %s", get_ssid);
     ESP_LOGI("SERVER", "PASS: %s", get_pass);
     ESP_LOGI("SERVER", "MAC: %s", device_mac_str);
+    ESP_LOGI("SERVER", "DS: %s", DEVICE_SECRET);
     //
     // Create a JSON object
     cJSON *root = cJSON_CreateObject();
@@ -52,7 +54,9 @@ esp_err_t hello_get_handler(httpd_req_t *req)
     // Add data
     cJSON_AddStringToObject(root, "ssid", get_ssid);
     cJSON_AddStringToObject(root, "pass", get_pass);
-    cJSON_AddStringToObject(root, "mac", device_mac_str);
+    cJSON_AddStringToObject(root, "did", device_mac_str);
+    cJSON_AddStringToObject(root, "ds", DEVICE_SECRET);
+    cJSON_AddStringToObject(root, "pid", DEVICE_PID);
    
 
     // Convert JSON object to string
@@ -122,6 +126,11 @@ esp_err_t http_get_restart_for_connect(httpd_req_t *req){
 // ================= HTTP SERVER START =================
 httpd_handle_t start_webserver(void)
 {
+
+    if (server != NULL) {
+        httpd_stop(server);
+        server = NULL;
+    }
     
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
