@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "raven_peer_handler.h"
 
 uint8_t RAVEN_AP_MODE = 0;
@@ -102,6 +101,7 @@ uint8_t device_wifi_provision(void){
 uint8_t isPaired(void){
     uint8_t success = nvs_memory_read("PAIRED");
     uint8_t val = 0;
+
     if(success){
         val = (uint8_t)read_nvs_buffer[0];
     }

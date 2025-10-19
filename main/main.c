@@ -9,6 +9,7 @@
 // raven projects includes
 #include "raven_peer_handler.h"
 #include "api_request_handler.h"
+#include <string.h>
 
 #define INDICATOR_LED 40 //GPIO_NUM_6
 
@@ -57,7 +58,7 @@ void app_main(void)
 
 
     uint8_t CONNECTED_MODE = device_wifi_provision();
-    
+    // http_result_t http_result = {0};
 
     ////////////////////////////////////////////////////////////////////////
     while (1)
@@ -104,17 +105,35 @@ void app_main(void)
             //     DEVICE_PID,
             //     DEVICE_SECRET
             // );
-        if (is_wifi_sta_connected()){
-            
 
-            if(is_http_request_busy()){
-                printf(" --- HTTP Request in Progress --- \n");
-            }
-            else{
-                async_api_post_device_pairing(device_mac_str,
+        // device pairing section
+        if (is_wifi_sta_connected() &!isPaired()){
+            
+            if(!is_http_request_busy() && !raven_http_result.done){
+                async_api_get_device_pairing(device_mac_str,
                                               DEVICE_PID,
-                                              DEVICE_SECRET);  
+                                              DEVICE_SECRET);
+                // http_result = get_raven_http_result();
             }
+            else if (!is_http_request_busy() && raven_http_result.done){
+                printf(">>> %s", raven_http_result.response);
+
+                if (raven_http_result.status_code==200){
+                    set_device_paired();
+                }
+            }
+
+            else if (is_http_request_busy()){
+                printf(" ... HTTP REQUEST RUNNING ... \n");
+            }
+                
+                
+            
+            
+          
+
+             
+            
         }
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){

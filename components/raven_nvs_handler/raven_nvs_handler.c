@@ -34,14 +34,17 @@ uint8_t nvs_memory_read(const char *key)
 {
     nvs_handle_t my_handle;
     esp_err_t ret = nvs_open("storage", NVS_READONLY, &my_handle);
+
     if (ret != ESP_OK)
     {
-        ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+        // ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+        return 0;
     }
-    else
-    {
-        ESP_LOGI("NVS", "NVS handle opened successfully");
-    }
+    // else
+    // {
+    //     // ESP_LOGI("NVS", "NVS handle opened successfully");
+    // }
+    
     char stored_value[50];                       // Buffer to store the retrieved value
     size_t required_size = sizeof(stored_value); // Size of the buffer
 
@@ -56,7 +59,8 @@ uint8_t nvs_memory_read(const char *key)
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGI("CLIENT", "The value is not initialized yet!");
+        // ESP_LOGI("CLIENT", "The value is not initialized yet!");
+        return 0;
     }
     else
     {
