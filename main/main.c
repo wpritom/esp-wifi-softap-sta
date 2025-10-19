@@ -59,7 +59,7 @@ void app_main(void)
 
     uint8_t CONNECTED_MODE = device_wifi_provision();
     // http_result_t http_result = {0};
-
+    uint8_t PAIRED = isPaired();
     ////////////////////////////////////////////////////////////////////////
     while (1)
     {
@@ -94,20 +94,8 @@ void app_main(void)
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
-        // api_get_remote_status();
-            // api_post_device_data(device_mac_str,
-            //                      DEVICE_SECRET,
-            //                      "68e350d6284f49dd01c20a46",
-            //                      1,
-            //                      100);
-            // api_post_device_pairing(
-            //     device_mac_str,
-            //     DEVICE_PID,
-            //     DEVICE_SECRET
-            // );
-
         // device pairing section
-        if (is_wifi_sta_connected() &!isPaired()){
+        if (is_wifi_sta_connected() &!PAIRED){
             
             if(!is_http_request_busy() && !raven_http_result.done){
                 async_api_get_device_pairing(device_mac_str,
@@ -117,9 +105,11 @@ void app_main(void)
             }
             else if (!is_http_request_busy() && raven_http_result.done){
                 printf(">>> %s", raven_http_result.response);
+                raven_http_result.done = false;
 
                 if (raven_http_result.status_code==200){
                     set_device_paired();
+                    PAIRED=1;
                 }
             }
 
