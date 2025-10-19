@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "api_request_handler.h"
 
-
+#define HTTP_REQUEST_TIMEOUT_MS 10000  // 10 seconds
 // Buffer to store response
 #define MAX_HTTP_OUTPUT_BUFFER 2048
 static char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
@@ -174,13 +174,15 @@ esp_http_client_handle_t async_client = NULL;  // Global handle initialized to N
 static bool async_http_request_failed = false;
 static bool http_request_in_progress = false;
 static bool http_request_failed = false;
+static uint32_t http_request_start_time = 0;
+
 
 void async_client_cleanup() {
     if(async_client != NULL){
+        esp_http_client_close(async_client);
         esp_http_client_cleanup(async_client);
         async_client = NULL;
     }
-    
 }
 
 bool is_http_request_busy(void)
@@ -193,6 +195,12 @@ bool is_http_request_busy(void)
 
         if (err == ESP_ERR_HTTP_EAGAIN)
         {
+            // Still in progress — check timeout
+            if (esp_log_timestamp() - http_request_start_time > HTTP_REQUEST_TIMEOUT_MS) {
+                ESP_LOGE("HTTP BUSY", "Timeout reached, forcing cleanup");
+                http_request_in_progress = false;
+                async_client_cleanup();
+            }
             return http_request_in_progress;
         }
         else if (err == ESP_OK) // <-- ADD THIS CHECK
@@ -200,15 +208,11 @@ bool is_http_request_busy(void)
             // If perform returns ESP_OK, the request finished *successfully* and
             // the event handler should have cleared http_request_in_progress.
             // We still need to cleanup the client though.
-
-            if (!http_request_in_progress)
-            {
-                async_client_cleanup();
-            }
+            http_request_in_progress = false;
+            async_client_cleanup();
         }
         else // (err != ESP_OK)
         {
-
             http_request_in_progress = false;
             http_request_failed = true;
             async_client_cleanup();
@@ -270,8 +274,23 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
+void init_request_session(){
+    http_request_start_time = esp_log_timestamp();
+    // Reset buffer before new request
+    memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
+    buffer_idx = 0;
+
+}
 
 
+esp_http_client_config_t async_config = {
+        .event_handler = __async_http_event_handler,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .timeout_ms=5000,
+        .is_async=1,
+    };
+
+// APIS
 
 
 void async_api_post_device_pairing(const char *device_id,
@@ -282,10 +301,8 @@ void async_api_post_device_pairing(const char *device_id,
         ESP_LOGE("API", "Invalid arguments");
         return;
     }
-
-    // Reset buffer before new request
-    memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
-    buffer_idx = 0;
+    // init request session 
+    init_request_session();
 
     ESP_LOGI("API", "Posting device pairing...");
 
@@ -297,16 +314,10 @@ void async_api_post_device_pairing(const char *device_id,
 
     
     // HTTP client config
-    esp_http_client_config_t config = {
-        .url = get_url,  // <-- Replace with your real endpoint
-        .event_handler = __async_http_event_handler,
-        .crt_bundle_attach = esp_crt_bundle_attach,
-        .timeout_ms=5000,
-        .is_async=1,
-    };
+    async_config.url = get_url;
 
     // esp_http_client_handle_t client = esp_http_client_init(&config);
-    async_client = esp_http_client_init(&config);
+    async_client = esp_http_client_init(&async_config);
 
     if (async_client == NULL) {
         ESP_LOGE("API", "Failed to init HTTP client");
@@ -325,7 +336,7 @@ void async_api_post_device_pairing(const char *device_id,
     err = esp_http_client_perform(async_client);
     
     if (err == ESP_ERR_HTTP_EAGAIN) {
-        ESP_LOGI("API", "Async HTTP request started");
+        // ESP_LOGI("API", "Async HTTP request started");
         http_request_in_progress = true;
         return;  // ✅ Return immediately — non-blocking
     } 

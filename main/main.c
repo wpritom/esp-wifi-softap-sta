@@ -1,24 +1,12 @@
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-// #include "esp_mac.h"
 #include "esp_system.h"
-// #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
-// #include "nvs_flash.h"
-
 #include "lwip/err.h"
 #include "lwip/sys.h"
-
-// #include "esp_netif.h"
-
 #include "driver/gpio.h"
-// #include <event_groups.h>
-// wifi peering related headers 
-// #include "raven_nvs_handler.h"
-// #include "raven_wifi_config.h"
-// #include "server_handler.h"
+// raven projects includes
 #include "raven_peer_handler.h"
 #include "api_request_handler.h"
 
@@ -105,8 +93,7 @@ void app_main(void)
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
-        if (is_wifi_sta_connected()){
-            // api_get_remote_status();
+        // api_get_remote_status();
             // api_post_device_data(device_mac_str,
             //                      DEVICE_SECRET,
             //                      "68e350d6284f49dd01c20a46",
@@ -117,6 +104,8 @@ void app_main(void)
             //     DEVICE_PID,
             //     DEVICE_SECRET
             // );
+        if (is_wifi_sta_connected()){
+            
 
             if(is_http_request_busy()){
                 printf(" --- HTTP Request in Progress --- \n");
