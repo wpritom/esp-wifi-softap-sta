@@ -11,4 +11,9 @@ void api_post_device_data(const char *device_id,
 void api_post_device_pairing(const char *device_id,
                              const char *device_pid,
                              const char *device_secret);
-                          
+
+void async_client_cleanup();
+void async_api_post_device_pairing(const char *device_id,
+                             const char *device_pid,
+                             const char *device_secret);
+bool is_http_request_busy(void);

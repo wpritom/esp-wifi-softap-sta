@@ -69,14 +69,14 @@ void app_main(void)
 
 
     uint8_t CONNECTED_MODE = device_wifi_provision();
-
+    
 
     ////////////////////////////////////////////////////////////////////////
     while (1)
     {
         // __NOP(); // <-  Prevent WDT Reset
         printf("%s\n", device_mac_str);
-        vTaskDelay(100 / portTICK_PERIOD_MS); // <- 1 Second
+        vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
         printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, is_wifi_sta_connected());
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
@@ -106,17 +106,26 @@ void app_main(void)
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
 
         if (is_wifi_sta_connected()){
-            api_get_remote_status();
+            // api_get_remote_status();
             // api_post_device_data(device_mac_str,
             //                      DEVICE_SECRET,
             //                      "68e350d6284f49dd01c20a46",
             //                      1,
             //                      100);
-            api_post_device_pairing(
-                device_mac_str,
-                DEVICE_PID,
-                DEVICE_SECRET
-            );
+            // api_post_device_pairing(
+            //     device_mac_str,
+            //     DEVICE_PID,
+            //     DEVICE_SECRET
+            // );
+
+            if(is_http_request_busy()){
+                printf(" --- HTTP Request in Progress --- \n");
+            }
+            else{
+                async_api_post_device_pairing(device_mac_str,
+                                              DEVICE_PID,
+                                              DEVICE_SECRET);  
+            }
         }
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){
@@ -130,10 +139,6 @@ void app_main(void)
             printf("WIFI DISCONNECTED | RETRY CTD %d\n", RETRY_CTD);
         }
 
-        // if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){
-        //     printf(" --- WIFI DISCONNECTED | Retrying --- \n");
-        //     CONNECTED_MODE = device_wifi_provision();
-        // }
     }
 }
 

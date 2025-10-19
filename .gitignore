@@ -2,8 +2,3 @@ build/
 sdkconfig
 sdkconfig.old
 .vscode
-<<<<<<< HEAD
-
-=======
->>>>>>> a7b32c110e2d1dc97d7c96aec4be85cb0b6121d1
-.cache

@@ -12,6 +12,7 @@ void erase_wifi_config(void){
     nvs_memory_erase("SSID");
     nvs_memory_erase("PASS");
     nvs_memory_erase("CHECK");
+    nvs_memory_erase("PAIRED");
     sta_ssid[0] = '\0';
     sta_pass[0] = '\0';
 }
@@ -95,4 +96,18 @@ uint8_t device_wifi_provision(void){
     }
 
     return CONNECTED_MODE;
+}
+
+
+uint8_t isPaired(void){
+    uint8_t success = nvs_memory_read("PAIRED");
+    uint8_t val = 0;
+    if(success){
+        val = (uint8_t)read_nvs_buffer[0];
+    }
+    return val;
+}
+
+void set_device_paired(void){
+    nvs_memory_store("PAIRED","1");
 }

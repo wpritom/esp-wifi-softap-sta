@@ -169,7 +169,112 @@ void api_post_device_data(const char *device_id,
 }
 
 
-void api_post_device_pairing(const char *device_id,
+//// Asynchronous event handler
+esp_http_client_handle_t async_client = NULL;  // Global handle initialized to NULL
+static bool async_http_request_failed = false;
+static bool http_request_in_progress = false;
+static bool http_request_failed = false;
+
+void async_client_cleanup() {
+    if(async_client != NULL){
+        esp_http_client_cleanup(async_client);
+        async_client = NULL;
+    }
+    
+}
+
+bool is_http_request_busy(void)
+{
+    esp_err_t err = ESP_OK;
+
+    if (http_request_in_progress && async_client != NULL)
+    {
+        err = esp_http_client_perform(async_client);
+
+        if (err == ESP_ERR_HTTP_EAGAIN)
+        {
+            return http_request_in_progress;
+        }
+        else if (err == ESP_OK) // <-- ADD THIS CHECK
+        {
+            // If perform returns ESP_OK, the request finished *successfully* and
+            // the event handler should have cleared http_request_in_progress.
+            // We still need to cleanup the client though.
+
+            if (!http_request_in_progress)
+            {
+                async_client_cleanup();
+            }
+        }
+        else // (err != ESP_OK)
+        {
+
+            http_request_in_progress = false;
+            http_request_failed = true;
+            async_client_cleanup();
+        }
+    }
+
+    // Check if the request is finished (either by success/finish event or a hard error)
+    if (!http_request_in_progress && async_client != NULL)
+    {
+        // This handles cleanup for HTTP_EVENT_ON_FINISH/DISCONNECTED
+        async_client_cleanup();
+    }
+
+    return http_request_in_progress;
+}
+
+static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
+{
+    switch (evt->event_id) {
+        case HTTP_EVENT_ERROR:
+            http_request_failed = true;
+            ESP_LOGE("HTTP HANDLER >>>", "HTTP_EVENT_ERROR");
+            break;
+
+        case HTTP_EVENT_ON_DATA:
+            if (buffer_idx + evt->data_len < MAX_HTTP_OUTPUT_BUFFER) {
+                memcpy(local_response_buffer + buffer_idx, evt->data, evt->data_len);
+                buffer_idx += evt->data_len;
+            }
+            break;
+
+        case HTTP_EVENT_ON_FINISH:
+            // MARK HTTP REQUEST DONE
+            http_request_in_progress = false;
+            local_response_buffer[buffer_idx] = '\0';
+            // Process Response
+            int status_code = esp_http_client_get_status_code(evt->client);
+            
+            if (status_code >= 200 && status_code < 300) {
+                ESP_LOGI("HTTP HANDLER >>>", "Request OK: %d", status_code);
+                printf("[%d] Response: %s\n", status_code, local_response_buffer);
+            } else {
+                http_request_failed = true;
+                ESP_LOGE("HTTP HANDLER >>>", "HTTP failed, status: %d", status_code);
+                printf("[%d] Response: %s\n", status_code, local_response_buffer);
+            }
+ 
+            // async_client_cleanup();
+            break;
+
+        case HTTP_EVENT_DISCONNECTED:
+            http_request_in_progress = false;  // ✅ Mark done even on error
+            // async_client_cleanup();
+            break;
+
+        default:
+            break;
+    }
+    return ESP_OK;
+}
+
+
+
+
+
+void async_api_post_device_pairing(const char *device_id,
                              const char *device_pid,
                              const char *device_secret)
 {
@@ -190,55 +295,45 @@ void api_post_device_pairing(const char *device_id,
                        "https://api.goloklab.com/iot/device/pair/?device_id=%s&device_pid=%s&device_secret=%s",
                        device_id, device_pid, device_secret);
 
+    
     // HTTP client config
     esp_http_client_config_t config = {
         .url = get_url,  // <-- Replace with your real endpoint
-        .event_handler = _http_event_handler,
+        .event_handler = __async_http_event_handler,
         .crt_bundle_attach = esp_crt_bundle_attach,
         .timeout_ms=5000,
         .is_async=1,
     };
 
-    esp_http_client_handle_t client = esp_http_client_init(&config);
+    // esp_http_client_handle_t client = esp_http_client_init(&config);
+    async_client = esp_http_client_init(&config);
 
-
-    if (client == NULL) {
+    if (async_client == NULL) {
         ESP_LOGE("API", "Failed to init HTTP client");
         return;
     }
 
      // Set request type and headers
-    esp_err_t err = esp_http_client_set_method(client, HTTP_METHOD_GET);
-
+    esp_err_t err = esp_http_client_set_method(async_client, HTTP_METHOD_GET);
+    
     if (err != ESP_OK) {
         ESP_LOGE("API", "Failed to set method: %s", esp_err_to_name(err));
-        esp_http_client_cleanup(client);
+        esp_http_client_cleanup(async_client);
         return;
     }
 
-
-
-    // Non-blocking perform
-    // esp_err_t err;
-    // asynchronous perform
-    do {
-        err = esp_http_client_perform(client);
-        if (err == ESP_ERR_HTTP_EAGAIN) {
-            // HTTP still in progress — let other tasks run
-            // vTaskDelay(pdMS_TO_TICKS(10));
-            printf("HTTP still in progress\n");
-        }
-    } while (err == ESP_ERR_HTTP_EAGAIN);
-
-    if (err == ESP_OK) {
-        ESP_LOGI("API", "Device pairing response");
-        int status_code = esp_http_client_get_status_code(client);
-        printf("[%d] Response: %s\n", status_code, local_response_buffer);
+    err = esp_http_client_perform(async_client);
+    
+    if (err == ESP_ERR_HTTP_EAGAIN) {
+        ESP_LOGI("API", "Async HTTP request started");
+        http_request_in_progress = true;
+        return;  // ✅ Return immediately — non-blocking
+    } 
+    else if (err != ESP_OK) {
+        ESP_LOGE("API", "HTTP perform failed: %s", esp_err_to_name(err));
+        async_client_cleanup();
+        http_request_in_progress = false;
         return;
-    } else {
-        ESP_LOGE("API", "POST failed: %s", esp_err_to_name(err));
     }
-
-    esp_http_client_cleanup(client);
 
 }
