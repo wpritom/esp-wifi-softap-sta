@@ -4,144 +4,9 @@
 #include "esp_log.h"
 #include "api_request_handler.h"
 
-// static http_result_t raven_http_result = {0};
-
-// static char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
 static int buffer_idx = 0;
 http_result_t raven_http_result;
-
-// void api_get_remote_status(void){
-//     // Reset buffer and index before new request
-//     memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
-//     buffer_idx = 0;
-//     printf(" --- api_get_remote_status\n");
-
-//     esp_http_client_config_t config = {
-//         .url = "https://api.goloklab.com/status/",
-//         .event_handler = _http_event_handler, // <-- ADD THE HANDLER HERE
-//         .crt_bundle_attach = esp_crt_bundle_attach,
-//     };
-
-//     esp_http_client_handle_t client = esp_http_client_init(&config);
-//     esp_err_t err = esp_http_client_perform(client);
-
-//     if (err == ESP_OK) {
-//         int status_code = esp_http_client_get_status_code(client);
-        
-//         // The event handler has already populated the buffer
-//         printf("[%d] Response: %s\n", status_code, local_response_buffer);
-//     }
-
-//     else{
-//         ESP_LOGE(" API Handler", "HTTP GET request failed: %s", esp_err_to_name(err));
-
-//     }
-    
-//     esp_http_client_cleanup(client);
-// }
-
-
-// void api_post_device_data(const char *device_id,
-//                           const char *device_secret,
-//                           const char *uuid,
-//                           int dpid,
-//                           int value)
-// {
-
-
-//     if (!device_id || !device_secret || !uuid) {
-//         ESP_LOGE("API", "Invalid arguments");
-//         return;
-//     }
-
-//     // Reset buffer before new request
-//     memset(local_response_buffer, 0, MAX_HTTP_OUTPUT_BUFFER);
-//     buffer_idx = 0;
-
-//     ESP_LOGI("API", "Posting device data...");
-
-//     // Build JSON string
-//     char post_data[256];
-//     int len = snprintf(post_data, sizeof(post_data),
-//              "{\"device_id\":\"%s\",\"device_secret\":\"%s\",\"uuid\":\"%s\",\"dpid\":%d,\"value\":%d}",
-//              device_id, device_secret, uuid, dpid, value);
-
-
-//     if (len < 0 || len >= sizeof(post_data)) {
-//         ESP_LOGE("API", "JSON payload too large");
-//         return;
-//     }
-
-
-//     // HTTP client config
-//     esp_http_client_config_t config = {
-//         .url = "https://api.goloklab.com/iot/device/report",  // <-- Replace with your real endpoint
-//         .event_handler = _http_event_handler,
-//         .crt_bundle_attach = esp_crt_bundle_attach,
-//         .timeout_ms=5000,
-//         .is_async=1,
-//     };
-
-//     esp_http_client_handle_t client = esp_http_client_init(&config);
-
-//     if (client == NULL) {
-//         ESP_LOGE("API", "Failed to init HTTP client");
-//         return;
-//     }
-
-
-
-//     // Set request type and headers
-//     esp_err_t err = esp_http_client_set_method(client, HTTP_METHOD_POST);
-
-//     if (err != ESP_OK) {
-//         ESP_LOGE("API", "Failed to set method: %s", esp_err_to_name(err));
-//         esp_http_client_cleanup(client);
-//         return;
-//     }
-
-//     // set header and Attach the JSON body
-//     esp_http_client_set_header(client, "Content-Type", "application/json");
-//     esp_http_client_set_post_field(client, post_data, strlen(post_data));
-
-//     // Perform the request
-//     // err = esp_http_client_perform(client);
-
-//     // if (err == ESP_OK) {
-//     //     int status_code = esp_http_client_get_status_code(client);
-//     //     ESP_LOGI("API", "POST success, status = %d", status_code);
-//     //     ESP_LOGI("API", "Response: %s", local_response_buffer);
-//     // } else {
-//     //     ESP_LOGE("API", "POST request failed: %s", esp_err_to_name(err));
-//     // }
-
-//     // Non-blocking perform
-//     // esp_err_t err;
-//     // asynchronous perform
-//     do {
-//         err = esp_http_client_perform(client);
-//         if (err == ESP_ERR_HTTP_EAGAIN) {
-//             // HTTP still in progress — let other tasks run
-//             // vTaskDelay(pdMS_TO_TICKS(10));
-//             printf("HTTP still in progress\n");
-//         }
-//     } while (err == ESP_ERR_HTTP_EAGAIN);
-
-//     if (err == ESP_OK) {
-//         ESP_LOGI("API", "POST complete");
-//         return;
-//     } else {
-//         ESP_LOGE("API", "POST failed: %s", esp_err_to_name(err));
-//     }
-
-//     esp_http_client_cleanup(client);
-
-//     // Cleanup
-//     // esp_http_client_cleanup(client);
-    
-// }
-
 
 //// Asynchronous event handler
 esp_http_client_handle_t async_client = NULL;  // Global handle initialized to NULL
@@ -170,8 +35,13 @@ http_result_t get_raven_http_result(void){
     return raven_http_result;
 }
 
-bool is_http_request_busy(void)
+bool await_http_request(void)
 {
+    /* 
+    If the request is in progress, perform the request. 
+    This should be called if a request is in progress.
+    Should be called just once.
+    */
     esp_err_t err = ESP_OK;
 
     if (raven_http_result.in_progress && async_client != NULL)
@@ -247,6 +117,11 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
 }
 
 void init_request_session(){
+
+    if (raven_http_result.in_progress) {
+    ESP_LOGW("API", "Previous request still in progress, skipping new init");
+    return;
+    }   
    // Reset buffer before new request
     http_request_start_time = esp_log_timestamp();
     memset(&raven_http_result, 0, sizeof(raven_http_result));  // Reset all fields
@@ -287,8 +162,6 @@ void async_api_get_device_pairing(const char *device_id,
     
     // HTTP client config
     async_config.url = get_url;
-
-    // esp_http_client_handle_t client = esp_http_client_init(&config);
     async_client = esp_http_client_init(&async_config);
 
     if (async_client == NULL) {
@@ -304,6 +177,68 @@ void async_api_get_device_pairing(const char *device_id,
         esp_http_client_cleanup(async_client);
         return;
     }
+
+    err = esp_http_client_perform(async_client);
+    
+    if (err == ESP_ERR_HTTP_EAGAIN) {
+        // ESP_LOGI("API", "Async HTTP request started");
+        raven_http_result.in_progress = true;
+        return;  // ✅ Return immediately — non-blocking
+    } 
+    else if (err != ESP_OK) {
+        ESP_LOGE("API", "HTTP perform failed: %s", esp_err_to_name(err));
+        async_client_cleanup();
+        raven_http_result.in_progress = false;
+        return;
+    }
+
+}
+
+
+void async_api_post_device_data(const char *device_id,
+                          const char *device_secret,
+                          const char *uuid,
+                          int dpid,
+                          int value)
+{
+
+
+    if (!device_id || !device_secret || !uuid) {
+        ESP_LOGE("API", "Invalid arguments");
+        return;
+    }
+
+     // init request session 
+    init_request_session();
+
+    ESP_LOGI("API", "Posting device data...");
+
+    // Build JSON string
+    char post_data[256];
+    int len = snprintf(post_data, sizeof(post_data),
+             "{\"device_id\":\"%s\",\"device_secret\":\"%s\",\"uuid\":\"%s\",\"dpid\":%d,\"value\":%d}",
+             device_id, device_secret, uuid, dpid, value);
+
+    printf("%s\n", post_data);
+    if (len < 0 || len >= sizeof(post_data)) {
+        ESP_LOGE("API", "JSON payload too large");
+        return;
+    }
+
+
+    // HTTP client config
+    async_config.url = "https://api.goloklab.com/iot/device/report";
+    async_client = esp_http_client_init(&async_config);
+
+    if (async_client == NULL) {
+        ESP_LOGE("API", "Failed to init HTTP client");
+        return;
+    }
+     // Set request type and headers
+    esp_err_t err = esp_http_client_set_method(async_client, HTTP_METHOD_POST);
+     // set header and Attach the JSON body
+    esp_http_client_set_header(async_client, "Content-Type", "application/json");
+    esp_http_client_set_post_field(async_client, post_data, strlen(post_data));
 
     err = esp_http_client_perform(async_client);
     

@@ -65,7 +65,7 @@ void app_main(void)
     {
         // __NOP(); // <-  Prevent WDT Reset
         printf("%s\n", device_mac_str);
-        vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
+        vTaskDelay(100 / portTICK_PERIOD_MS); // <- 1 Second
         printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, is_wifi_sta_connected());
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
@@ -96,15 +96,16 @@ void app_main(void)
 
         // device pairing section
         if (is_wifi_sta_connected() &!PAIRED){
-            
-            if(!is_http_request_busy() && !raven_http_result.done){
+            printf(" >>> http request decition: \n");
+            if(!raven_http_result.in_progress && !raven_http_result.done){
+                printf(">>> http request decition: Device Pairing req send \n");
                 async_api_get_device_pairing(device_mac_str,
                                               DEVICE_PID,
                                               DEVICE_SECRET);
                 // http_result = get_raven_http_result();
             }
-            else if (!is_http_request_busy() && raven_http_result.done){
-                printf(">>> %s", raven_http_result.response);
+            else if (raven_http_result.done){
+                printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
                 raven_http_result.done = false;
 
                 if (raven_http_result.status_code==200){
@@ -113,16 +114,36 @@ void app_main(void)
                 }
             }
 
-            else if (is_http_request_busy()){
+            else if (raven_http_result.in_progress){
+                printf("awaiting http request ... \n");
+                await_http_request();
+                vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms
                 printf(" ... HTTP REQUEST RUNNING ... \n");
-            }
-                
-                
+            }     
             
-            
-          
+        }
 
-             
+        if(PAIRED && is_wifi_sta_connected()){
+            printf(" >>> http request: in_progress %d | done %d \n", raven_http_result.in_progress, raven_http_result.done);
+            if(!raven_http_result.in_progress && !raven_http_result.done){
+                printf(" >>> SENDING DATA \n");
+                async_api_post_device_data(device_mac_str,
+                                       DEVICE_SECRET,   
+                                       "68f489bf4ea652e8862472ba",
+                                       1,
+                                       1);
+            }
+            else if (raven_http_result.in_progress){
+                printf(" >>> AWAIT() SENDING DATA \n");
+                await_http_request();
+                vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms
+            }
+            else if (raven_http_result.done){
+                printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
+                raven_http_result.done = false;
+            }
+
+            
             
         }
 
