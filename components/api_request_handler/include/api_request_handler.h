@@ -3,7 +3,7 @@
 
 #define HTTP_REQUEST_TIMEOUT_MS 10000  // 10 seconds
 #define MAX_HTTP_OUTPUT_BUFFER 2048
-
+#define MAX_POST_DATA 256
 
 typedef struct {
     bool in_progress;
@@ -11,6 +11,8 @@ typedef struct {
     bool failed;
     int status_code;
     char response[MAX_HTTP_OUTPUT_BUFFER];
+    char post_data[MAX_POST_DATA];
+    bool post_progress;
 } http_result_t;
 
 // Declare global result (defined in http_client.c)
