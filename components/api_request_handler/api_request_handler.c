@@ -8,6 +8,8 @@
 static int buffer_idx = 0;
 http_result_t raven_http_result;
 
+static char async_post_buffer[256];  // Persistent buffer
+
 //// Asynchronous event handler
 esp_http_client_handle_t async_client = NULL;  // Global handle initialized to NULL
 // static bool async_http_request_failed = false;
@@ -42,6 +44,7 @@ bool await_http_request(void)
     This should be called if a request is in progress.
     Should be called just once.
     */
+    printf("--- AWAIT() %ld \n", esp_log_timestamp());
     esp_err_t err = ESP_OK;
 
     if (raven_http_result.in_progress && async_client != NULL)
@@ -92,10 +95,12 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
             break;
 
         case HTTP_EVENT_ON_DATA:
+            printf("data reading... %lu \n", esp_log_timestamp());
             if (buffer_idx + evt->data_len < MAX_HTTP_OUTPUT_BUFFER) {
                 memcpy(raven_http_result.response + buffer_idx, evt->data, evt->data_len);
                 buffer_idx += evt->data_len;
             }
+            printf("data reading finish...%lu \n", esp_log_timestamp());
             break;
 
         case HTTP_EVENT_ON_FINISH:
@@ -214,13 +219,13 @@ void async_api_post_device_data(const char *device_id,
     ESP_LOGI("API", "Posting device data...");
 
     // Build JSON string
-    char post_data[256];
-    int len = snprintf(post_data, sizeof(post_data),
+    // char post_data[256];
+    int len = snprintf(async_post_buffer, sizeof(async_post_buffer),
              "{\"device_id\":\"%s\",\"device_secret\":\"%s\",\"uuid\":\"%s\",\"dpid\":%d,\"value\":%d}",
              device_id, device_secret, uuid, dpid, value);
 
-    printf("%s\n", post_data);
-    if (len < 0 || len >= sizeof(post_data)) {
+    printf("%s\n", async_post_buffer);
+    if (len < 0 || len >= sizeof(async_post_buffer)) {
         ESP_LOGE("API", "JSON payload too large");
         return;
     }
@@ -238,7 +243,7 @@ void async_api_post_device_data(const char *device_id,
     esp_err_t err = esp_http_client_set_method(async_client, HTTP_METHOD_POST);
      // set header and Attach the JSON body
     esp_http_client_set_header(async_client, "Content-Type", "application/json");
-    esp_http_client_set_post_field(async_client, post_data, strlen(post_data));
+    esp_http_client_set_post_field(async_client, async_post_buffer, strlen(async_post_buffer));
 
     err = esp_http_client_perform(async_client);
     

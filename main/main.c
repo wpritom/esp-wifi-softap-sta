@@ -129,14 +129,14 @@ void app_main(void)
                 printf(" >>> SENDING DATA \n");
                 async_api_post_device_data(device_mac_str,
                                        DEVICE_SECRET,   
-                                       "68f489bf4ea652e8862472ba",
+                                       "68f1eb75305ecc23c7f0a807",
                                        1,
                                        1);
             }
             else if (raven_http_result.in_progress){
                 printf(" >>> AWAIT() SENDING DATA \n");
                 await_http_request();
-                vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms
+                vTaskDelay(20 / portTICK_PERIOD_MS); // 10ms
             }
             else if (raven_http_result.done){
                 printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
