@@ -2,6 +2,7 @@
 #include "raven_nvs_handler.h"
 #include "raven_wifi_config.h"
 #include "server_handler.h"
+#include "cJSON.h"
 
 #define DEVICE_PID "68e35ff49b1c4a01b6b68975"
 #define DEVICE_SECRET "s3cr3tK3y"
@@ -20,3 +21,4 @@ uint8_t device_wifi_provision(void);
 
 uint8_t isPaired(void);
 void set_device_paired(void);
+bool parse_uuid_save(const char *response);

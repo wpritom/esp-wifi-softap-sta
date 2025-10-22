@@ -35,7 +35,7 @@ void async_client_cleanup();
 void async_api_get_device_pairing(const char *device_id,
                              const char *device_pid,
                              const char *device_secret);
-bool await_http_request(void);
+// bool await_http_request(void);
 
 void async_api_post_device_data(const char *device_id,
                           const char *device_secret,
@@ -43,5 +43,6 @@ void async_api_post_device_data(const char *device_id,
                           int dpid,
                           int value);
 
+// void await();
 
 http_result_t get_raven_http_result(void);

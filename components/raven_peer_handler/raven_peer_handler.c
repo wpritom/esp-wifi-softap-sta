@@ -111,3 +111,22 @@ uint8_t isPaired(void){
 void set_device_paired(void){
     nvs_memory_store("PAIRED","1");
 }
+
+
+bool parse_uuid_save(const char *response) {
+    cJSON *root = cJSON_Parse(response);
+    if (root) {
+        cJSON *uuid_obj = cJSON_GetObjectItem(root, "uuid");
+        if (cJSON_IsString(uuid_obj)) {
+            char *uuid = uuid_obj->valuestring;
+            ESP_LOGI("JSON", "UUID: %s", uuid);
+            nvs_memory_store("UUID",uuid);
+            return true;
+        }
+        else{
+            return false;
+        }
+        cJSON_Delete(root);
+    }
+    return false;
+}

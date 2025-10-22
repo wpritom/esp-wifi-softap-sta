@@ -65,7 +65,7 @@ void app_main(void)
     {
         // __NOP(); // <-  Prevent WDT Reset
         printf("%s\n", device_mac_str);
-        vTaskDelay(100 / portTICK_PERIOD_MS); // <- 1 Second
+        vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
         printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, is_wifi_sta_connected());
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
@@ -109,14 +109,22 @@ void app_main(void)
                 raven_http_result.done = false;
 
                 if (raven_http_result.status_code==200){
+                    
                     set_device_paired();
-                    PAIRED=1;
+                    bool success = parse_uuid_save(raven_http_result.response);
+                    if (success){
+                        PAIRED=1;
+                    }
+                    else{
+                        printf("Pairing failed!\n");
+                    }
+                    
                 }
             }
 
             else if (raven_http_result.in_progress){
                 printf("awaiting http request ... \n");
-                await_http_request();
+                // await_http_request();
                 vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms
                 printf(" ... HTTP REQUEST RUNNING ... \n");
             }     
@@ -132,11 +140,6 @@ void app_main(void)
                                        "68f1eb75305ecc23c7f0a807",
                                        1,
                                        1);
-            }
-            else if (raven_http_result.in_progress){
-                printf(" >>> AWAIT() SENDING DATA \n");
-                await_http_request();
-                vTaskDelay(20 / portTICK_PERIOD_MS); // 10ms
             }
             else if (raven_http_result.done){
                 printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
