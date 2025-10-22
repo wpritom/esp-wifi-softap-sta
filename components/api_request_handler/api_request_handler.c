@@ -19,13 +19,36 @@ esp_http_client_handle_t async_client = NULL;  // Global handle initialized to N
 static uint32_t http_request_start_time = 0;
 
 
-void async_client_cleanup() {
-    if(async_client != NULL){
+
+
+void async_client_cleanup(void) {
+    if (async_client != NULL) {
         esp_http_client_close(async_client);
         esp_http_client_cleanup(async_client);
         async_client = NULL;
     }
+
+    // Fully reset result struct
+    memset(&raven_http_result, 0, sizeof(raven_http_result));
+    buffer_idx = 0;
 }
+
+
+void init_request_session(){
+
+    if (raven_http_result.in_progress) {
+        ESP_LOGW("API", "Previous request still in progress, skipping new init");
+        return;
+    }   
+    // force cleanup on init_request_session()
+    async_client_cleanup();
+   // Reset buffer before new request
+    http_request_start_time = esp_log_timestamp();
+    memset(&raven_http_result, 0, sizeof(raven_http_result));  // Reset all fields
+    raven_http_result.in_progress = true;
+    buffer_idx = 0;
+}
+
 
 // const char *get_http_response(void)
 // {
@@ -49,8 +72,9 @@ bool await_http_request(void)
 
     if (raven_http_result.in_progress && async_client != NULL)
     {
+        printf(">> raven_http_result.in_progress && async_client != NULL\n");
         err = esp_http_client_perform(async_client);
-
+        printf("%d",err);
         if (err == ESP_ERR_HTTP_EAGAIN)
         {
             // Still in progress — check timeout
@@ -91,16 +115,18 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
     switch (evt->event_id) {
         case HTTP_EVENT_ERROR:
             raven_http_result.failed = true;
-            ESP_LOGE("HTTP HANDLER >>>", "HTTP_EVENT_ERROR");
+            // don't printf here
             break;
 
         case HTTP_EVENT_ON_DATA:
-            printf("data reading... %lu \n", esp_log_timestamp());
+            // do the minimal required work only
             if (buffer_idx + evt->data_len < MAX_HTTP_OUTPUT_BUFFER) {
                 memcpy(raven_http_result.response + buffer_idx, evt->data, evt->data_len);
                 buffer_idx += evt->data_len;
+            } else {
+                // optionally set a flag to indicate overflow
+                raven_http_result.failed = true;
             }
-            printf("data reading finish...%lu \n", esp_log_timestamp());
             break;
 
         case HTTP_EVENT_ON_FINISH:
@@ -108,7 +134,7 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
             raven_http_result.done = true;
             raven_http_result.response[buffer_idx] = '\0';
             raven_http_result.status_code = esp_http_client_get_status_code(evt->client);
-            printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
+            // Do not printf here — signal the app to process the buffer
             break;
 
         case HTTP_EVENT_DISCONNECTED:
@@ -121,18 +147,6 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-void init_request_session(){
-
-    if (raven_http_result.in_progress) {
-    ESP_LOGW("API", "Previous request still in progress, skipping new init");
-    return;
-    }   
-   // Reset buffer before new request
-    http_request_start_time = esp_log_timestamp();
-    memset(&raven_http_result, 0, sizeof(raven_http_result));  // Reset all fields
-    raven_http_result.in_progress = true;
-    buffer_idx = 0;
-}
 
 
 esp_http_client_config_t async_config = {
@@ -244,11 +258,12 @@ void async_api_post_device_data(const char *device_id,
      // set header and Attach the JSON body
     esp_http_client_set_header(async_client, "Content-Type", "application/json");
     esp_http_client_set_post_field(async_client, async_post_buffer, strlen(async_post_buffer));
-
+    printf(" --- preparing to perform\n");
     err = esp_http_client_perform(async_client);
     
     if (err == ESP_ERR_HTTP_EAGAIN) {
         // ESP_LOGI("API", "Async HTTP request started");
+        printf(" --- perform will be progressed\n");
         raven_http_result.in_progress = true;
         return;  // ✅ Return immediately — non-blocking
     } 
