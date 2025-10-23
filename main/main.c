@@ -60,6 +60,7 @@ void app_main(void)
     uint8_t CONNECTED_MODE = device_wifi_provision();
     // http_result_t http_result = {0};
     uint8_t PAIRED = isPaired();
+    
     ////////////////////////////////////////////////////////////////////////
     while (1)
     {
@@ -96,9 +97,8 @@ void app_main(void)
 
         // device pairing section
         if (is_wifi_sta_connected() &!PAIRED){
-            printf(" >>> http request decition: \n");
             if(!raven_http_result.in_progress && !raven_http_result.done){
-                printf(">>> http request decition: Device Pairing req send \n");
+                // printf(">>> http request decition: Device Pairing req send \n");
                 async_api_get_device_pairing(device_mac_str,
                                               DEVICE_PID,
                                               DEVICE_SECRET);
@@ -110,8 +110,8 @@ void app_main(void)
 
                 if (raven_http_result.status_code==200){
                     
-                    set_device_paired();
-                    bool success = parse_uuid_save(raven_http_result.response);
+                    bool success = set_device_paired(raven_http_result.response);
+                    // bool success = parse_uuid_save(raven_http_result.response);
                     if (success){
                         PAIRED=1;
                     }
@@ -133,21 +133,18 @@ void app_main(void)
 
         if(PAIRED && is_wifi_sta_connected()){
             printf(" >>> http request: in_progress %d | done %d \n", raven_http_result.in_progress, raven_http_result.done);
+            
             if(!raven_http_result.in_progress && !raven_http_result.done){
-                printf(" >>> SENDING DATA \n");
                 async_api_post_device_data(device_mac_str,
                                        DEVICE_SECRET,   
-                                       "68f1eb75305ecc23c7f0a807",
+                                       USER_UUID,
                                        1,
                                        1);
             }
             else if (raven_http_result.done){
                 printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
                 raven_http_result.done = false;
-            }
-
-            
-            
+            }       
         }
 
         if(CONNECTED_MODE==RAVEN_STA_MODE && !is_wifi_sta_connected()){

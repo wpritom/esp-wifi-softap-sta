@@ -16,7 +16,7 @@
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
-#define EXAMPLE_ESP_MAXIMUM_RETRY 1
+#define EXAMPLE_ESP_MAXIMUM_RETRY 3
 
 extern char sta_ssid[32];
 extern char sta_pass[32];

@@ -1,5 +1,7 @@
 #include "raven_peer_handler.h"
 
+char USER_UUID[24];
+
 uint8_t RAVEN_AP_MODE = 0;
 uint8_t RAVEN_STA_MODE = 1;
 
@@ -7,13 +9,16 @@ uint8_t connected_mode = 0;
 uint8_t wifi_mode = 0;
 
 
+
 void erase_wifi_config(void){
     nvs_memory_erase("SSID");
     nvs_memory_erase("PASS");
     nvs_memory_erase("CHECK");
     nvs_memory_erase("PAIRED");
+    nvs_memory_read("UUID");
     sta_ssid[0] = '\0';
     sta_pass[0] = '\0';
+    USER_UUID[0] = '\0';
 }
 
 
@@ -104,12 +109,21 @@ uint8_t isPaired(void){
 
     if(success){
         val = (uint8_t)read_nvs_buffer[0];
+
+        // copy the UUID to global variable
+        if (nvs_memory_read("UUID"))
+        {
+            strcpy(USER_UUID, read_nvs_buffer);
+        }
+
     }
     return val;
 }
 
-void set_device_paired(void){
+bool set_device_paired(const char *response){
     nvs_memory_store("PAIRED","1");
+    bool success = parse_uuid_save(response);
+    return success;
 }
 
 

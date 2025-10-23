@@ -7,6 +7,7 @@
 #define DEVICE_PID "68e35ff49b1c4a01b6b68975"
 #define DEVICE_SECRET "s3cr3tK3y"
 
+extern char USER_UUID[24];
 
 extern uint8_t RAVEN_AP_MODE;
 extern uint8_t RAVEN_STA_MODE;
@@ -20,5 +21,5 @@ void device_station_mode_init(void);
 uint8_t device_wifi_provision(void);
 
 uint8_t isPaired(void);
-void set_device_paired(void);
+bool set_device_paired(const char *response);
 bool parse_uuid_save(const char *response);
