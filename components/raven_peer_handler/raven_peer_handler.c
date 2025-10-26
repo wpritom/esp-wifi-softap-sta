@@ -15,7 +15,7 @@ void erase_wifi_config(void){
     nvs_memory_erase("PASS");
     nvs_memory_erase("CHECK");
     nvs_memory_erase("PAIRED");
-    nvs_memory_read("UUID");
+    nvs_memory_erase("UUID");
     sta_ssid[0] = '\0';
     sta_pass[0] = '\0';
     USER_UUID[0] = '\0';

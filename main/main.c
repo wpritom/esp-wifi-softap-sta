@@ -91,6 +91,7 @@ void app_main(void)
                 erase_wifi_config();
                 COUNT_CONFIG_BUTTON_PRESSED=0;
                 CONNECTED_MODE = device_wifi_provision();
+                PAIRED = isPaired();
             }
         }
         gpio_set_level(INDICATOR_LED, INDICATOR_STATE);
@@ -98,33 +99,32 @@ void app_main(void)
         // device pairing section
         if (is_wifi_sta_connected() &!PAIRED){
             if(!raven_http_result.in_progress && !raven_http_result.done){
-                // printf(">>> http request decition: Device Pairing req send \n");
                 async_api_get_device_pairing(device_mac_str,
                                               DEVICE_PID,
                                               DEVICE_SECRET);
-                // http_result = get_raven_http_result();
+              
             }
             else if (raven_http_result.done){
+                // optional printout
                 printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
                 raven_http_result.done = false;
 
-                if (raven_http_result.status_code==200){
-                    
+                if (raven_http_result.status_code == 200)
+                {
                     bool success = set_device_paired(raven_http_result.response);
-                    // bool success = parse_uuid_save(raven_http_result.response);
-                    if (success){
-                        PAIRED=1;
+                    if (success)
+                    {
+                        PAIRED = isPaired();
                     }
-                    else{
+                    else
+                    {
                         printf("Pairing failed!\n");
                     }
-                    
                 }
             }
 
             else if (raven_http_result.in_progress){
-                printf("awaiting http request ... \n");
-                // await_http_request();
+                // adding a minimal delay for http request to process
                 vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms
                 printf(" ... HTTP REQUEST RUNNING ... \n");
             }     

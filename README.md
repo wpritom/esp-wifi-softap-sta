@@ -57,3 +57,75 @@ These endpoints will update SSID and password in the `nvs`.
 http://192.168.4.1/connect
 ```
 This endpoint sends the connect command to ESP.
+
+
+# Device Pairing
+
+Following Steps to pair the device with the app. 
+
+From the device perspective: 
+* Initially device not paired with the app `isPaired()` will give 0. 
+* Connect the device with a WiFi that provides internet access.
+* After it successfully connects with the WiFi call `async_api_get_device_pairing()`
+* When `async_api_get_device_pairing()` returns response 200
+* Success response is replied with the follwoing data
+```
+{
+  "device_id": "xx",
+  "device_secret": "xx",
+  "uuid": "xxxuuixxx",
+  "pid": "xxx"
+}
+```
+* Among the above data the `uuid` is the one that you need to save in your program. This will be required while reporting device data.
+
+## Device Pairing Example 
+
+Declate a global variable as a flag
+```c
+// declare global variables
+uint8_t PAIRED = isPaired(); // primarily it will be 0
+
+```
+Add this code in your main loop. 
+This will work when WiFi is connected and device is not paired.
+```c
+// device pairing section
+if (is_wifi_sta_connected() &!PAIRED){
+    if(!raven_http_result.in_progress && !raven_http_result.done){
+        async_api_get_device_pairing(device_mac_str,
+                                        DEVICE_PID,
+                                        DEVICE_SECRET);
+        
+    }
+    else if (raven_http_result.done){
+        // optional printout
+        printf("[%d] RESPONSE %s\n", raven_http_result.status_code, raven_http_result.response);
+        raven_http_result.done = false;
+
+        if (raven_http_result.status_code==200){
+            
+            bool success = set_device_paired(raven_http_result.response);
+            
+            if (success){
+                PAIRED=isPaired();
+            }
+            else{
+                printf("Pairing failed!\n");
+            }
+            
+        }
+    }
+
+    else if (raven_http_result.in_progress){
+        // adding a minimal delay for http request to process
+        vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms
+        printf(" ... HTTP REQUEST RUNNING ... \n");
+    }     
+    
+}
+
+```
+Notes:
+* Signal should be received within 1 minute. Otherwise you can consider the pairing as failed.
+* The `isPaired()` function is defined in `raven_peer_handler.h`

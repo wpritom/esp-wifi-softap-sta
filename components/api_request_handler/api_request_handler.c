@@ -94,6 +94,7 @@ static esp_err_t __async_http_event_handler(esp_http_client_event_t *evt) {
 
 void http_worker_task(void *pv) {
     while (raven_http_result.in_progress && async_client != NULL) {
+        // printf("http_worker_task | performing...\n");
         esp_err_t err = esp_http_client_perform(async_client);
 
         if (err == ESP_ERR_HTTP_EAGAIN) {
@@ -116,6 +117,7 @@ void http_worker_task(void *pv) {
             break;
         }
         else {
+            // NOTE ESP_ERR_HTTP_CONNECT need to handle seperately
             raven_http_result.failed = true;
             ESP_LOGE("HTTP WORKER", "HTTP perform failed: %s", esp_err_to_name(err));
             raven_http_result.in_progress = false;
@@ -196,7 +198,7 @@ void async_api_post_device_data(const char *device_id,
 
     async_config.url = "https://api.goloklab.com/iot/device/report";
     async_client = esp_http_client_init(&async_config);
-
+    
     if (async_client == NULL) {
         ESP_LOGE("API", "Failed to init HTTP client");
         return;
@@ -205,7 +207,7 @@ void async_api_post_device_data(const char *device_id,
     esp_err_t err = esp_http_client_set_method(async_client, HTTP_METHOD_POST);
     esp_http_client_set_header(async_client, "Content-Type", "application/json");
     esp_http_client_set_post_field(async_client, async_post_buffer, strlen(async_post_buffer));
-
+  
     // Start the task and store its handle
     raven_http_result.in_progress = true;
     xTaskCreate(http_worker_task, "http_worker", 8192, NULL, 5, &http_worker_handle);
