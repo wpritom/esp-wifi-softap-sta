@@ -76,6 +76,14 @@ void app_main(void)
             RAVEN_MQTT_CALLED = 1;
         }
 
+        if(is_mqtt_message_available()){
+            printf("|||||||| MQTT MESSAGE AVAILABLE: %d \n",raven_mqtt_buff[0]);
+            if(raven_mqtt_buff[2]==0xfe){
+                printf("----->> HEARTBEAT\n");
+            }
+        }
+
+        
         if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
             INDICATOR_STATE=1;
             
