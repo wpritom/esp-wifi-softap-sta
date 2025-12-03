@@ -129,3 +129,32 @@ if (is_wifi_sta_connected() &!PAIRED){
 Notes:
 * Signal should be received within 1 minute. Otherwise you can consider the pairing as failed.
 * The `isPaired()` function is defined in `raven_peer_handler.h`
+
+# MQTT Integration 
+## HiveMQ
+
+To integrate HiveMQ, at first you need to create an account (tested with free account).
+
+Edit the following credentials in `raven_mqtt_handler.c` file.
+```c
+/* ========== Your HiveMQ Credentials ========== */
+#define MQTT_BROKER_URI  "mqtts://173da0488d444eae9c65ebaf494d71f0.s1.eu.hivemq.cloud:8883"
+#define MQTT_USERNAME    "xxxx"
+#define MQTT_PASSWORD    "xxxx"
+#define MQTT_TOPIC_SUB   "xxxx"
+```
+
+Create certificate and save as `hivemq_ca.pem` in the `components\raven_mqtt_handler\certs` folder.
+
+You can create the certificate by following the steps below.
+
+**Git Bash**
+Example
+```
+openssl s_client -showcerts -connect 173da0488d444eae9c65ebaf494d71f0.s1.eu.hivemq.cloud:8883
+```
+Copy the certificate with the following label
+```
+i:C=US, O=Internet Security Research Group, CN=ISRG Root X1
+```
+Copy the certificate in the `hivemq_ca.pem` file.

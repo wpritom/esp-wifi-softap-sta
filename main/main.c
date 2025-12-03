@@ -9,6 +9,7 @@
 // raven projects includes
 #include "raven_peer_handler.h"
 #include "api_request_handler.h"
+#include "raven_mqtt_handler.h"
 #include <string.h>
 
 #define INDICATOR_LED 40 //GPIO_NUM_6
@@ -61,6 +62,7 @@ void app_main(void)
     // http_result_t http_result = {0};
     uint8_t PAIRED = isPaired();
     
+    uint8_t RAVEN_MQTT_CALLED = 0;
     ////////////////////////////////////////////////////////////////////////
     while (1)
     {
@@ -69,8 +71,14 @@ void app_main(void)
         vTaskDelay(500 / portTICK_PERIOD_MS); // <- 1 Second
         printf("CONNECTED MODE %d WIFI CONNECTED %d\n", CONNECTED_MODE, is_wifi_sta_connected());
 
+        if (is_wifi_sta_connected() && PAIRED && !RAVEN_MQTT_CALLED){
+            raven_mqtt_start();
+            RAVEN_MQTT_CALLED = 1;
+        }
+
         if(CONNECTED_MODE==RAVEN_STA_MODE && is_wifi_sta_connected()){
             INDICATOR_STATE=1;
+            
         }
         else if(CONNECTED_MODE==RAVEN_AP_MODE && !is_wifi_sta_connected()){
             INDICATOR_STATE=!INDICATOR_STATE;
